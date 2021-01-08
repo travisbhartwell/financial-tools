@@ -1,0 +1,10 @@
+[package]
+name = "pricesdb-updater"
+version = "0.1.0"
+authors = ["Travis B. Hartwell <nafai@travishartwell.net>"]
+edition = "2018"
+
+[dependencies]
+chrono = "0.4.19"
+tokio = { version = "1", features = ["full"] }
+yahoo_finance_api = "1.1.5"
