@@ -4,7 +4,19 @@ version = "0.1.0"
 authors = ["Travis B. Hartwell <nafai@travishartwell.net>"]
 edition = "2018"
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "pricesdb-updater"
+path = "src/main.rs"
+
 [dependencies]
 chrono = "0.4.19"
+color-eyre = "0.5"
+eyre = "0.6.5"
+futures = "0.3.9"
+structopt = "0.3.21"
 tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1.1"
 yahoo_finance_api = "1.1.5"

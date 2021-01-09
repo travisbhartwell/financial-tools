@@ -1,58 +1,53 @@
-use chrono::{DateTime, Local, TimeZone, Utc};
-use std::time::{Duration, UNIX_EPOCH};
-use std::{convert::TryFrom, fmt::Display};
-use yahoo_finance_api;
+use chrono::{offset::TimeZone, DateTime, Local, NaiveDate};
+use color_eyre::eyre::Result;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
-struct HistoricPrice {
-    timestamp: DateTime<Local>,
-    symbol: String,
-    value: f64,
+use pricesdb_updater;
+
+fn parse_local_datetime(src: &str) -> Result<DateTime<Local>> {
+    // First Get a NaiveDate
+    let naive_date: NaiveDate = src.parse()?;
+
+    // Then convert to a Local DateTime at midnight
+    let local_date_time: DateTime<Local> = Local
+        .from_local_date(&naive_date)
+        .unwrap()
+        .and_hms_milli(0, 0, 0, 0);
+
+    Ok(local_date_time)
 }
 
-impl Display for HistoricPrice {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let timestamp_str = self.timestamp.format("%Y/%m/%d %H:%M:%S").to_string();
-        write!(f, "P {} {} ${:.4}", timestamp_str, self.symbol, self.value)
-    }
-}
+#[derive(Debug, StructOpt)]
+#[structopt(name = "pricesdb-updater")]
+struct Cli {
+    // Output File
+    #[structopt(short = "o", long = "output-file", parse(from_os_str))]
+    output_file: PathBuf,
 
-impl TryFrom<&yahoo_finance_api::Quote> for HistoricPrice {
-    type Error = &'static str;
+    #[structopt(short = "s", long = "start-date", parse(try_from_str = parse_local_datetime))]
+    start_date: DateTime<Local>,
 
-    fn try_from(quote: &yahoo_finance_api::Quote) -> Result<Self, Self::Error> {
-        let timestamp: DateTime<Local> =
-            DateTime::from(UNIX_EPOCH + Duration::from_secs(quote.timestamp));
+    #[structopt(short = "e", long = "end-date", parse(try_from_str = parse_local_datetime))]
+    end_date: DateTime<Local>,
 
-        let price: HistoricPrice = HistoricPrice {
-            timestamp,
-            symbol: String::from("AMZN"),
-            value: quote.close,
-        };
-
-        Ok(price)
-    }
+    #[structopt(short = "c", long = "commodity")]
+    commodities: Vec<String>,
 }
 
 #[tokio::main]
-pub async fn main() {
-    let provider = yahoo_finance_api::YahooConnector::new();
-    let start: DateTime<Local> = Local.ymd(2020, 1, 1).and_hms_milli(0, 0, 0, 0);
-    let end: DateTime<Local> = Local.ymd(2021, 1, 1).and_hms_milli(0, 0, 0, 0);
+pub async fn main() -> Result<()> {
+    color_eyre::install()?;
 
-    let response =
-        provider.get_quote_history("AMZN", start.with_timezone(&Utc), end.with_timezone(&Utc));
+    let cli = Cli::from_args();
 
-    let history = response.await.unwrap();
+    let commodity: String = cli.commodities.first().unwrap().clone();
 
-    let price_history: Vec<HistoricPrice> = history
-        .quotes()
-        .unwrap()
-        .iter()
-        .map(HistoricPrice::try_from)
-        .filter_map(Result::ok)
-        .collect();
+    let price_history = pricesdb_updater::get_commodity_history(commodity, cli.start_date, cli.end_date).await?;
 
     for price in price_history.iter() {
         println!("{}", price);
     }
+
+    Ok(())
 }

@@ -1,7 +1,22 @@
+# Prices History Update
+
+For simplicity, (at least initially) this will work with the following constraints:
+
+* The same start and end dates will be used for each commodity looked up.
+* The pricesdb will be created from scratch each time. If I find fetching the entire history needed is a problem, I will handle just reading missing values in the future.
+* The prices in the history file will be stored in date order.
+
+# Test Run
+
+```
+cargo run -- --start-date "2020-01-01" --end-date "2021-01-01" ---commodity AMZN --output-file ./pricesdb
+```
+
 # Prices History File Format
 
 Example from the Ledger manual:
 
+```
 P 2004/06/21 02:17:58 TWCUX $27.76
 P 2004/06/21 02:17:59 AGTHX $25.41
 P 2004/06/21 02:18:00 OPTFX $39.31
@@ -12,3 +27,12 @@ P 2004/06/21 02:18:02 AAPL $32.91
 # References
 
 * Prices DB Format: [Ledger Manual](https://www.ledger-cli.org/3.0/doc/ledger3.html#Commodity-price-histories)
+
+
+# TODO
+
+* Expand the documentation for commmand line arguments
+
+# Figure out
+
+* Default options for the output path to expand the tilde as well as handling '-' for outputing to stdout
