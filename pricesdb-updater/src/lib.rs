@@ -1,7 +1,12 @@
 use chrono::{DateTime, Local, Utc};
 use color_eyre::eyre;
-use std::time::{Duration, UNIX_EPOCH};
+use std::io::Write;
 use std::{convert::TryFrom, fmt::Display};
+use std::{
+    fs::File,
+    path::PathBuf,
+    time::{Duration, UNIX_EPOCH},
+};
 use yahoo_finance_api;
 
 pub struct HistoricPrice {
@@ -36,8 +41,6 @@ impl Display for HistoricPrice {
         write!(f, "P {} {} ${:.4}", timestamp_str, self.symbol, self.value)
     }
 }
-
-// type CommodityQuote = (yahoo_finance_api::Quote, str);
 
 impl TryFrom<(&yahoo_finance_api::Quote, &str)> for HistoricPrice {
     type Error = eyre::Error;
@@ -83,4 +86,17 @@ pub async fn get_commodity_history(
         .collect();
 
     price_history
+}
+
+pub fn write_pricesdb_file(
+    filename: PathBuf,
+    prices_history: Vec<&HistoricPrice>,
+) -> eyre::Result<()> {
+    let mut output_file = File::create(filename.as_path())?;
+
+    for price in prices_history.iter() {
+        write!(output_file, "{}\n", price)?;
+    }
+
+    Ok(())
 }

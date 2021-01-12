@@ -5,6 +5,7 @@ For simplicity, (at least initially) this will work with the following constrain
 * The same start and end dates will be used for each commodity looked up.
 * The pricesdb will be created from scratch each time. If I find fetching the entire history needed is a problem, I will handle just reading missing values in the future.
 * The prices in the history file will be stored in date order.
+* The pricesdb will output as much as possible; i.e. if the user specifies multiple commodities and one of them is invalid, a prices file would still be generated with the values for the valid commodities. We also will report on the errors.
 
 # Test Run
 
