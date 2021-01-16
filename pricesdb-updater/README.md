@@ -10,8 +10,21 @@ For simplicity, (at least initially) this will work with the following constrain
 # Test Run
 
 ```
-cargo run -- --start-date "2020-01-01" --end-date "2021-01-01" ---commodity AMZN --output-file ./pricesdb
+cargo run -- --start-date "2020-01-01" --end-date "2021-01-01" --commodity AMZN --output-file ./pricesdb
 ```
+
+To get the commodities from Ledger:
+
+```
+ledger commodities | grep -v "\$$" | gsed 's/^/---commodity /' | tr '\n' ' '
+```
+
+This will give you part of the command line:
+
+```
+cargo run -- --start-date "2014-09-30" --end-date "2021-01-12" --output-file ./pricesdb $(ledger commodities | grep -v "\$$" | gsed 's/^/---commodity /' | tr '\n' ' ')
+```
+
 
 # Prices History File Format
 
@@ -29,11 +42,9 @@ P 2004/06/21 02:18:02 AAPL $32.91
 
 * Prices DB Format: [Ledger Manual](https://www.ledger-cli.org/3.0/doc/ledger3.html#Commodity-price-histories)
 
-
 # TODO
 
 * Expand the documentation for commmand line arguments
-
-# Figure out
-
+* Add context to errors from `get_commodity_history`
+* Make sure at least one commodity is specified
 * Default options for the output path to expand the tilde as well as handling '-' for outputing to stdout
