@@ -81,7 +81,18 @@ Possible extensions:
 
 * Hook this up to regex tester.
 
-* Add a `TODO` field, so this will output a comment so I can update the transaction manually.
+* DONE Add a `TODO` field, so this will output a comment so I can update the transaction manually.
+
+* Look into `expand` from the Regex library for Payee: https://docs.rs/regex/1.4.3/regex/struct.Captures.html#method.expand
+
+* Be consistent with using newtype.
+
+Next:
+* Figure out formatting rules to ensure amount are lined up.
+* Add Option<negate_first> field.
+* Implement payee templating.
+* Finish importer configuration.
+* Implement command line parsing and subcommands.
 
 ---
 <b id="f1">1</b> [TOML](https://toml.io/en/) [↩](#a1)
