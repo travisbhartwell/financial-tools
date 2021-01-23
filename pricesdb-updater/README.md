@@ -48,3 +48,4 @@ P 2004/06/21 02:18:02 AAPL $32.91
 * Add context to errors from `get_commodity_history`
 * Make sure at least one commodity is specified
 * Default options for the output path to expand the tilde as well as handling '-' for outputing to stdout
+* Use `lazy_static!` for `provider` in `get_commodity_history`.

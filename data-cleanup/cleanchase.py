@@ -6,9 +6,9 @@ import re
 import sys
 
 COLUMN_NAMES = [
-    "Date",
-    "Description",
-    "Amount"
+    "date",
+    "description",
+    "amount"
 ]
 
 def load_input(input_filename):
@@ -21,7 +21,7 @@ TRANSACTION_FIELDS_RE = re.compile(r"^(?P<month>\d{2})\/(?P<day>\d{2})[ ,](?P<de
 
 def transaction_fields(line: str, year: str):
     month = line[0:2]; day = line[3:5]
-    
+
     if line[6] == '"':
         end = line.index('"', 7) + 1
     else:
@@ -31,9 +31,9 @@ def transaction_fields(line: str, year: str):
     amount = line[end + 1:].replace('"', '').replace(",", "")
 
     return {
-        "Date": f"{year}-{month}-{day}", 
-        "Description": description, 
-        "Amount": amount
+        "date": f"{year}-{month}-{day}",
+        "description": description,
+        "amount": amount
     }
 
 def cleanup_commas(line: str):
@@ -91,4 +91,3 @@ if __name__ == "__main__":
         print(f"{str(e)}", file=sys.stderr)
 
     sys.exit(result)
-    
