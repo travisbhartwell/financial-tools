@@ -98,6 +98,15 @@ Next:
      finalizing catergorization of the amounts.
 * Finish importer configuration.
 * Implement command line parsing and subcommands.
+* Set up pre-commit hooks for Cargo fmt.
+* Create a separate posting formatter, with the following inputs:
+    * date string
+    * payee string
+    * optional comment lines
+    * first account
+    * first amount, formatted
+    * second account
+    * second account, formatted
 
 ---
 <b id="f1">1</b> [TOML](https://toml.io/en/) [↩](#a1)

@@ -70,6 +70,7 @@ pub struct TransactionRuleConfiguration {
     pub account2: AccountAlias,
     pub payee: Payee,
     pub needs_finalized: Option<bool>,
+    pub negate_first_amount: Option<bool>,
 }
 
 impl TransactionRuleConfiguration {
@@ -80,6 +81,7 @@ impl TransactionRuleConfiguration {
         account2: AccountAlias,
         payee: Payee,
         needs_finalized: Option<bool>,
+        negate_first_amount: Option<bool>,
     ) -> Self {
         Self {
             name,
@@ -88,6 +90,7 @@ impl TransactionRuleConfiguration {
             account2,
             payee,
             needs_finalized,
+            negate_first_amount,
         }
     }
 }
@@ -101,6 +104,7 @@ pub struct TransactionRule {
     pub account2: AccountAlias,
     pub payee: Payee,
     pub needs_finalized: bool,
+    pub negate_first_amount: bool,
     pattern: Option<Regex>,
     payee_is_template: bool,
 }
@@ -114,20 +118,44 @@ impl TransactionRule {
 
         //     let templates = pattern.captures(record.description);
         // }
+
         let payee = &self.payee;
         let formatted_date = record.formatted_date();
 
-        let account1 = account_map.get(&self.account1).unwrap();
-        let formatted_pos_amount = record.formatted_amount();
+        let (first_formatted_amount, second_formatted_amount) = if self.negate_first_amount {
+            (
+                record.formatted_negative_amount(),
+                record.formatted_amount(),
+            )
+        } else {
+            (
+                record.formatted_amount(),
+                record.formatted_negative_amount(),
+            )
+        };
 
+        let account1 = account_map.get(&self.account1).unwrap();
         let account2 = account_map.get(&self.account2).unwrap();
-        let formatted_neg_amount = record.formatted_negative_amount();
+
+        let mut comments: String = format!(";; SOURCE: '{}'", record.description);
+
+        if self.needs_finalized {
+            comments.push_str("\n    ;; NEEDS FINALIZED");
+        }
+
         format!(
             r"{} {}
+    {}
     {}                             {}
     {}                            {}
 ",
-            formatted_date, payee, account1, formatted_pos_amount, account2, formatted_neg_amount
+            formatted_date,
+            payee,
+            comments,
+            account1,
+            first_formatted_amount,
+            account2,
+            second_formatted_amount
         )
     }
 }
@@ -147,6 +175,7 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
             account2,
             payee,
             needs_finalized,
+            negate_first_amount,
         } = config;
 
         let name_string: String = match name {
@@ -157,6 +186,7 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
         };
 
         let needs_finalized_bool: bool = needs_finalized.unwrap_or(false);
+        let negate_first_amount_bool: bool = negate_first_amount.unwrap_or(false);
 
         let payee_is_template: bool = PAYEE_TEMPLATE_RE.is_match(payee.as_str());
 
@@ -178,6 +208,7 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
             pattern,
             payee_is_template,
             needs_finalized: needs_finalized_bool,
+            negate_first_amount: negate_first_amount_bool,
         })
     }
 }
@@ -262,9 +293,7 @@ impl FinancialImporter {
             // configuration should be updated to not have overlapping
             // patterns.
             // TODO Give more meaningful error.
-            _ => {
-                Err(eyre!("Too many matches!"))
-            }
+            _ => Err(eyre!("Too many matches!")),
         }
     }
 
