@@ -38,13 +38,8 @@ struct Cli {
     commodities: Vec<String>,
 }
 
-#[tokio::main]
-pub async fn main() -> Result<()> {
-    color_eyre::install()?;
-
-    let cli = Cli::from_args();
-
-    let (price_histories, errors) = cli
+async fn update_prices_db(cli: Cli) -> Result<()> {
+    let (price_histories, errors): (Vec<_>, Vec<_>) = cli
         .commodities
         .iter()
         .map(|commodity| get_commodity_history(commodity.clone(), cli.start_date, cli.end_date))
@@ -52,26 +47,33 @@ pub async fn main() -> Result<()> {
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .fold((Vec::new(), Vec::new()), |(mut oks, mut errs), s| {
-            match s {
-                Ok(s) => oks.push(s),
-                Err(s) => errs.push(s),
-            };
-            (oks, errs)
-        });
+        .partition(Result::is_ok);
 
-    if !errors.is_empty() {
-        eprintln!("The following errors happened while fetching commodities:");
+    let mut price_histories: Vec<HistoricPrice> = price_histories
+        .into_iter()
+        .flat_map(Result::unwrap)
+        .collect();
 
-        for error in errors.iter() {
-            eprintln!("{:#?}", error);
-        }
-    }
-
-    let mut price_histories: Vec<&HistoricPrice> = price_histories.iter().flatten().collect();
     price_histories.sort();
 
+    let errors: Vec<_> = errors.into_iter().flat_map(Result::err).collect();
+
     write_pricesdb_file(cli.output_file, price_histories)?;
+  
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+#[tokio::main]
+pub async fn main() -> Result<()> {
+    color_eyre::install()?;
+
+    let cli = Cli::from_args();
+
+    update_prices_db(cli).await?;
 
     Ok(())
 }

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Local, Utc};
-use color_eyre::eyre;
+use color_eyre::eyre::{Error, Result, WrapErr};
 use std::io::Write;
 use std::{convert::TryFrom, fmt::Display};
 use std::{
@@ -8,7 +8,7 @@ use std::{
     time::{Duration, UNIX_EPOCH},
 };
 use yahoo_finance_api;
-
+#[derive(Debug)]
 pub struct HistoricPrice {
     timestamp: DateTime<Local>,
     symbol: String,
@@ -43,7 +43,7 @@ impl Display for HistoricPrice {
 }
 
 impl TryFrom<(&yahoo_finance_api::Quote, &str)> for HistoricPrice {
-    type Error = eyre::Error;
+    type Error = Error;
 
     fn try_from(
         commodity_quote: (&yahoo_finance_api::Quote, &str),
@@ -67,8 +67,10 @@ pub async fn get_commodity_history(
     commodity: String,
     start: DateTime<Local>,
     end: DateTime<Local>,
-) -> eyre::Result<Vec<HistoricPrice>> {
+) -> Result<Vec<HistoricPrice>> {
     let provider = yahoo_finance_api::YahooConnector::new();
+    eprintln!("Fetching prices for {}.", commodity);
+
     let response = provider.get_quote_history(
         &commodity,
         start.with_timezone(&Utc),
@@ -79,8 +81,9 @@ pub async fn get_commodity_history(
 
     let commodity_str = commodity.as_str();
 
-    let price_history: eyre::Result<Vec<HistoricPrice>> = history
-        .quotes()?
+    let price_history: Result<Vec<HistoricPrice>> = history
+        .quotes()
+        .wrap_err_with(|| format!("Problems fetching price history for '{}'.", commodity_str))?
         .iter()
         .map(|quote| HistoricPrice::try_from((quote, commodity_str)))
         .collect();
@@ -88,10 +91,7 @@ pub async fn get_commodity_history(
     price_history
 }
 
-pub fn write_pricesdb_file(
-    filename: PathBuf,
-    prices_history: Vec<&HistoricPrice>,
-) -> eyre::Result<()> {
+pub fn write_pricesdb_file(filename: PathBuf, prices_history: Vec<HistoricPrice>) -> Result<()> {
     let mut output_file = File::create(filename.as_path())?;
 
     for price in prices_history.iter() {
