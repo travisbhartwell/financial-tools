@@ -1,6 +1,6 @@
 # Financial Importer
 
-This is a rewrite of a Python program I lost (kudos to not having proper backups in place) that I used to 
+This is a rewrite of a Python program I lost (kudos to not having proper backups in place) that I used to
 import various CSV files into my ledger.
 
 I know that other such solutions exist, so this exists largely as a learning tool as well as scratching my own itch.
@@ -61,7 +61,7 @@ Simplified:
    * The payee to use.
    * The account used in the first line of the posting.
    * The account used in the second line of the posting.
-   * Negative account? 
+   * Negative account?
 
 Possible additions:
 * Commodity/currency definitions and/or defaults.
@@ -91,6 +91,11 @@ Next:
 * Figure out formatting rules to ensure amount are lined up.
 * Add Option<negate_first> field.
 * Implement payee templating.
+* Add comments to posting:
+   * `SOURCE: {description}` - Inline documentation of source,
+     but will also be easy to delete after validation of import.
+   * `NEEDS FINALIZATION` - comment to mark when I need to manually edit the posting,
+     finalizing catergorization of the amounts.
 * Finish importer configuration.
 * Implement command line parsing and subcommands.
 
@@ -102,4 +107,3 @@ Next:
 <b id="f3">3</b> [JSON](https://www.json.org/json-en.html) [↩](#a3)
 
 <b id="f4">4</b> [Dhall](https://dhall-lang.org/#) [↩](#a4)
-

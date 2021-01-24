@@ -17,7 +17,11 @@ pub struct SourceRecord {
 
 impl fmt::Display for SourceRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Date: {}, Description: '{}', Amount: {}", self.date, self.description, self.amount)
+        write!(
+            f,
+            "Date: {}, Description: '{}', Amount: {}",
+            self.date, self.description, self.amount
+        )
     }
 }
 
@@ -27,11 +31,7 @@ impl SourceRecord {
             static ref NUMBER_FORMAT: NumberFormat = NumberFormat::new();
         }
 
-        let amount = if negate {
-            - self.amount
-        } else {
-            self.amount
-        };
+        let amount = if negate { -self.amount } else { self.amount };
 
         let formatted_number: String = NUMBER_FORMAT.format(",.2f", amount);
 
@@ -79,12 +79,12 @@ impl TransactionRuleConfiguration {
         needs_finalized: Option<bool>,
     ) -> Self {
         Self {
-            name: name,
-            pattern_string: pattern_string,
-            account1: account1,
-            account2: account2,
-            payee: payee,
-            needs_finalized: needs_finalized,
+            name,
+            pattern_string,
+            account1,
+            account2,
+            payee,
+            needs_finalized,
         }
     }
 }
@@ -114,15 +114,18 @@ impl TransactionRule {
         let payee = &self.payee;
         let formatted_date = record.formatted_date();
 
-        let account1 = account_map.get(&self.account1).unwrap(); 
+        let account1 = account_map.get(&self.account1).unwrap();
         let formatted_pos_amount = record.formatted_amount();
 
         let account2 = account_map.get(&self.account2).unwrap();
         let formatted_neg_amount = record.formatted_negative_amount();
-        format!(r"{} {}
+        format!(
+            r"{} {}
     {}                             {}
     {}                            {}
-", formatted_date, payee, account1, formatted_pos_amount, account2, formatted_neg_amount)
+",
+            formatted_date, payee, account1, formatted_pos_amount, account2, formatted_neg_amount
+        )
     }
 }
 
@@ -150,10 +153,7 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
             }
         };
 
-        let needs_finalized_bool: bool = match needs_finalized {
-            Some(value) => value,
-            None => false,
-        };
+        let needs_finalized_bool: bool = needs_finalized.unwrap_or(false);
 
         let payee_is_template: bool = PAYEE_TEMPLATE_RE.is_match(payee.as_str());
 
@@ -187,12 +187,12 @@ pub struct ImporterConfiguration {
 
 impl ImporterConfiguration {
     pub fn new() -> Self {
-        let account_map: AccountMap = HashMap::new();
+        let accounts: AccountMap = HashMap::new();
         let transaction_rules: Vec<TransactionRule> = Vec::new();
 
         Self {
-            accounts: account_map,
-            transaction_rules: transaction_rules,
+            accounts,
+            transaction_rules,
         }
     }
 
@@ -294,7 +294,7 @@ impl FinancialImporter {
             }
             _ => {
                 eprintln!("Multiple matches found for input '{}'.", input);
-                for index in rule_matches.into_iter() {
+                for index in rule_matches {
                     eprintln!(
                         "\tMatched rule with pattern: '{}'",
                         self.transaction_rules[index].pattern_string

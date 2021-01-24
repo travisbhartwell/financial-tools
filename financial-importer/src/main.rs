@@ -1,7 +1,6 @@
+use color_eyre::eyre::Result;
 use financial_importer::{FinancialImporter, SourceRecord};
 use std::io;
-use color_eyre::eyre::Result;
-
 
 fn load_config() -> Result<FinancialImporter> {
     let contents = std::fs::read_to_string("test.toml")
@@ -12,7 +11,7 @@ fn load_config() -> Result<FinancialImporter> {
     Ok(importer)
 }
 
-fn process_csv_stdio(importer: FinancialImporter) -> Result<()> {
+fn process_csv_stdio(importer: &FinancialImporter) -> Result<()> {
     let mut rdr = csv::Reader::from_reader(io::stdin());
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
@@ -33,8 +32,7 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     let importer: FinancialImporter = load_config()?;
-    process_csv_stdio(importer)?;
+    process_csv_stdio(&importer)?;
 
     Ok(())
 }
-

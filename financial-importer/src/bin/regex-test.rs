@@ -44,13 +44,13 @@ fn main() {
         let matches: Vec<_> = regex_set.matches(line.as_str()).into_iter().collect();
 
         if matches.is_empty() {
-            write!(non_matches_files, "{}\n", line).unwrap();
+            writeln!(non_matches_files, "{}", line).unwrap();
         }
 
-        for m in matches.into_iter() {
-            write!(
+        for m in matches {
+            writeln!(
                 matches_file,
-                "Line: |{}| matched by |{}|\n",
+                "Line: |{}| matched by |{}|",
                 line,
                 &regex_set.patterns()[m]
             )
