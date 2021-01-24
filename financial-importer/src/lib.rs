@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use color_eyre::eyre::{Error, Result};
+use color_eyre::eyre::{eyre, Error, Result};
 use format_num::NumberFormat;
 use lazy_static::lazy_static;
 use regex::{Regex, RegexSet};
@@ -39,14 +39,17 @@ impl SourceRecord {
         format!("${}", formatted_number)
     }
 
+    #[must_use]
     pub fn formatted_amount(&self) -> String {
         self.format_amount(false)
     }
 
+    #[must_use]
     pub fn formatted_negative_amount(&self) -> String {
         self.format_amount(true)
     }
 
+    #[must_use]
     pub fn formatted_date(&self) -> String {
         // We want the date in the format YYYY/MM/DD
         format!("{}", self.date.format("%Y/%m/%d"))
@@ -258,9 +261,9 @@ impl FinancialImporter {
             // We consider multiple matches an error. The importer
             // configuration should be updated to not have overlapping
             // patterns.
+            // TODO Give more meaningful error.
             _ => {
-                panic!("Too many matches!")
-                // eyre!("Too many matches!")
+                Err(eyre!("Too many matches!"))
             }
         }
     }
