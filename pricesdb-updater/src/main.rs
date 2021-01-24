@@ -1,5 +1,5 @@
 use chrono::{offset::TimeZone, DateTime, Local, NaiveDate};
-use color_eyre::eyre::Result;
+use color_eyre::{eyre::eyre, eyre::Report, Result, Section};
 use futures::stream::futures_unordered::FuturesUnordered;
 use futures::stream::StreamExt;
 use std::path::PathBuf;
@@ -38,13 +38,8 @@ struct Cli {
     commodities: Vec<String>,
 }
 
-#[tokio::main]
-pub async fn main() -> Result<()> {
-    color_eyre::install()?;
-
-    let cli = Cli::from_args();
-
-    let (price_histories, errors) = cli
+async fn update_prices_db(cli: Cli) -> Result<(), Report> {
+    let (price_histories, errors): (Vec<_>, Vec<_>) = cli
         .commodities
         .iter()
         .map(|commodity| get_commodity_history(commodity.clone(), cli.start_date, cli.end_date))
@@ -52,26 +47,34 @@ pub async fn main() -> Result<()> {
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .fold((Vec::new(), Vec::new()), |(mut oks, mut errs), s| {
-            match s {
-                Ok(s) => oks.push(s),
-                Err(s) => errs.push(s),
-            };
-            (oks, errs)
-        });
+        .partition(Result::is_ok);
 
-    if !errors.is_empty() {
-        eprintln!("The following errors happened while fetching commodities:");
-
-        for error in errors.iter() {
-            eprintln!("{:#?}", error);
-        }
-    }
-
-    let mut price_histories: Vec<&HistoricPrice> = price_histories.iter().flatten().collect();
+    let mut price_histories: Vec<HistoricPrice> = price_histories
+        .into_iter()
+        .flat_map(Result::unwrap)
+        .collect();
     price_histories.sort();
-
     write_pricesdb_file(cli.output_file, price_histories)?;
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        // TODO: This only shows the "outermost" errors for errors that have been wrapped,
+        // figure out how to properly show down to the source errors.
+        errors.into_iter().map(Result::unwrap_err).fold(
+            Err(eyre!("One or more errors were reported!")),
+            |report, e| report.section(e),
+        )
+    }
+}
+
+#[tokio::main]
+pub async fn main() -> Result<()> {
+    color_eyre::install()?;
+
+    let cli = Cli::from_args();
+
+    update_prices_db(cli).await?;
 
     Ok(())
 }
