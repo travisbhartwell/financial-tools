@@ -16,21 +16,14 @@ pub fn load_configuration(config_file: Option<PathBuf>) -> Result<TransactionMat
         config_pathname.to_str().unwrap()
     );
 
-    if config_pathname.exists() {
-        let contents = std::fs::read_to_string(config_pathname).wrap_err_with(|| {
-            format!(
-                "Encountered errors reading config file '{}'.",
-                config_pathname.to_str().unwrap()
-            )
-        })?;
-        let matcher: TransactionMatcher = toml::from_str(&contents)?;
-        Ok(matcher)
-    } else {
-        Err(eyre!(format!(
-            "Missing configuration file '{}'.",
+    let contents = std::fs::read_to_string(config_pathname).wrap_err_with(|| {
+        format!(
+            "Encountered errors reading config file '{}'.",
             config_pathname.to_str().unwrap()
-        )))
-    }
+        )
+    })?;
+    let matcher: TransactionMatcher = toml::from_str(&contents)?;
+    Ok(matcher)
 }
 
 static DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
