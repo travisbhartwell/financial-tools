@@ -1,9 +1,10 @@
 use color_eyre::eyre::Result;
-use std::path::PathBuf;
-use structopt::StructOpt;
-
+use financial_importer::app::{LOG_ENV_VAR, VALIDATION_LOG_LEVEL};
 use financial_importer::transaction_matcher;
 use financial_importer::transaction_matcher::TransactionMatcher;
+use log::trace;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "financial-importer")]
@@ -32,23 +33,17 @@ enum Command {
 fn main() -> Result<()> {
     color_eyre::install()?;
 
-    let app = App::from_args();
+    let app: App = App::from_args();
 
-    // Not the most ideal, but for validate configuration, I want to
-    // add logging. Loading the configuration files need to be done for
-    // the other steps regardless.
-
-    if let Command::ValidateConfig = app.command {
-        eprintln!("Validating configuration.");
-    }
+    initialize_logging(&app);
 
     // Load the configuration
-    let transaction_matcher: TransactionMatcher =
+    let _transaction_matcher: TransactionMatcher =
         transaction_matcher::load_configuration(app.config_file)?;
 
     // Now, dispatch based on the command
     match app.command {
-        Command::ValidateConfig => validate_config(transaction_matcher),
+        Command::ValidateConfig => trace!("Configuration validation completed."),
         Command::TestMatches { input_file } => {
             println!(
                 "Testing matches, with input_file: {}!",
@@ -63,12 +58,18 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn validate_config(transaction_matcher: TransactionMatcher) {
-    let account_count = transaction_matcher.accounts.len();
-    let rule_count = transaction_matcher.transaction_rules.len();
+fn initialize_logging(app: &App) {
+    // `pretty_env_logger` is configured through an environment variable,
+    // so manually set the value to the desired level if the requested command
+    // `validate-config`, as `validate-config` is simply loading the configuration
+    // with increased logging and then exiting.
+    if let Command::ValidateConfig = app.command {
+        if let Ok(level) = std::env::var(LOG_ENV_VAR) {
+            eprintln!("{} already set to '{}', leaving.", LOG_ENV_VAR, level);
+        } else {
+            std::env::set_var(LOG_ENV_VAR, &VALIDATION_LOG_LEVEL);
+        }
+    }
 
-    eprintln!("Configuration file loaded:");
-    eprintln!("\tNumber of accounts defined: {}", account_count);
-    eprintln!("\tNumber of rules defined: {}", rule_count);
-    eprintln!("Configuration validation completed.")
+    pretty_env_logger::init_custom_env(&LOG_ENV_VAR);
 }

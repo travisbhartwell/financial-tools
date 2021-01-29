@@ -1,5 +1,6 @@
 use color_eyre::eyre::Error;
 use lazy_static::lazy_static;
+use log::trace;
 use regex::{Regex, RegexSet};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -87,7 +88,7 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
             None
         };
 
-        Ok(TransactionRule {
+        let rule = TransactionRule {
             name: name_string,
             pattern_string,
             account1,
@@ -97,7 +98,11 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
             payee_is_template,
             needs_finalized: needs_finalized_bool,
             negate_first_amount: negate_first_amount_bool,
-        })
+        };
+
+        trace!("Loaded Transaction Rule: '{}'", &rule.name);
+
+        Ok(rule)
     }
 }
 
@@ -124,18 +129,27 @@ impl TryFrom<TransactionMatcherConfiguration> for TransactionMatcher {
             transaction_rules,
         }: TransactionMatcherConfiguration,
     ) -> Result<Self, Self::Error> {
+        trace!("Loaded {} account alias definitions.", accounts.len());
+
         // TODO: Accumulate and report errors for missing account aliases
         // transaction_rules.iter().map(|&rule| {
         //     accounts.contains_key(&rule.account1) && accounts.contains_key(&rule.account2)
         // });
-        let patterns = transaction_rules.iter().map(|rule| &rule.pattern_string);
 
+        let patterns = transaction_rules.iter().map(|rule| &rule.pattern_string);
         let rule_patterns: RegexSet = RegexSet::new(patterns)?;
 
-        Ok(TransactionMatcher {
+        trace!(
+            "Loaded matcher with {} compiled patterns.",
+            rule_patterns.len()
+        );
+
+        let matcher = TransactionMatcher {
             accounts,
             transaction_rules,
             rule_patterns,
-        })
+        };
+
+        Ok(matcher)
     }
 }

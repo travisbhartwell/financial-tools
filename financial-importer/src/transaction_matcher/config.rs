@@ -1,5 +1,7 @@
+use crate::app::{APP_NAME, DEFAULT_CONFIG_FILE_NAME};
 use crate::transaction_matcher::definitions::TransactionMatcher;
 use color_eyre::eyre::{eyre, Result, WrapErr};
+use log::{info, trace};
 use platform_dirs::AppDirs;
 use std::path::{Path, PathBuf};
 
@@ -11,7 +13,7 @@ pub fn load_configuration(config_file: Option<PathBuf>) -> Result<TransactionMat
     };
     let config_pathname: &Path = config_pathbuf.as_path();
 
-    eprintln!(
+    info!(
         "Using config file path: {}",
         config_pathname.to_str().unwrap()
     );
@@ -22,12 +24,12 @@ pub fn load_configuration(config_file: Option<PathBuf>) -> Result<TransactionMat
             config_pathname.to_str().unwrap()
         )
     })?;
+
+    trace!("Starting configuration file validation.");
+
     let matcher: TransactionMatcher = toml::from_str(&contents)?;
     Ok(matcher)
 }
-
-static DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
-static APP_NAME: &str = env!("CARGO_PKG_NAME");
 
 fn default_config_filename() -> Option<PathBuf> {
     let app_dirs = AppDirs::new(Some(APP_NAME), false)?;
