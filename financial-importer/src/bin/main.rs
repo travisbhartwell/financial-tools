@@ -15,7 +15,12 @@ use structopt::StructOpt;
 #[structopt(name = "financial-importer")]
 struct App {
     // Common arguments:
-    #[structopt(long, short = "c", env = "FINANCIAL_IMPORTER_CONFIG", parse(from_os_str))]
+    #[structopt(
+        long,
+        short = "c",
+        env = "FINANCIAL_IMPORTER_CONFIG",
+        parse(from_os_str)
+    )]
     config_file: Option<PathBuf>,
     #[structopt(subcommand)]
     command: Command,
@@ -33,7 +38,7 @@ enum Command {
     },
     /// Process a CSV file to produce entries.
     ProcessCSV {
-        #[structopt(long, short = "format_name")]
+        #[structopt(long, short = "f")]
         format_name: String,
         #[structopt(long, short = "i", parse(from_os_str))]
         input_file: PathBuf,
@@ -59,13 +64,16 @@ fn main() -> Result<()> {
                 input_file.to_str().unwrap()
             );
         }
-        Command::ProcessCSV { format_name, input_file } => process_csv(importer, format_name, input_file)?,
+        Command::ProcessCSV {
+            format_name,
+            input_file,
+        } => process_csv(&importer, format_name.as_str(), input_file)?,
     }
 
     Ok(())
 }
 
-fn process_csv(importer: FinancialImporter, format_name: String, input_file: PathBuf) -> Result<()> {
+fn process_csv(importer: &FinancialImporter, format_name: &str, input_file: PathBuf) -> Result<()> {
     trace!(
         "Processing CSV using input file '{}'.",
         &input_file.to_str().unwrap()

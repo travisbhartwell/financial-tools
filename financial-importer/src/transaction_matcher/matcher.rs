@@ -10,7 +10,7 @@ use super::definitions::{AccountMap, FinancialImporter, TransactionMatcher, Tran
 impl FinancialImporter {
     pub fn ledger_entry_for_source_record(
         &self,
-        file_format: &String,
+        file_format: &str,
         record: &SourceRecord,
     ) -> Result<Option<LedgerEntry>> {
         let matcher: &TransactionMatcher = self

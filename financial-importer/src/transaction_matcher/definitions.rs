@@ -1,10 +1,14 @@
-use color_eyre::eyre::Error;
+use color_eyre::{
+    eyre::{eyre, Error},
+    Result,
+};
 use lazy_static::lazy_static;
 use log::trace;
 use regex::{Regex, RegexSet};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::iter::once;
 
 // Deserialization and Validation technique borrowed from
 // https://github.com/serde-rs/serde/issues/642#issuecomment-683276351
@@ -12,12 +16,50 @@ pub type AccountMap = HashMap<String, String>;
 pub type ImportFileDefinitionMap = HashMap<String, TransactionMatcher>;
 
 #[derive(Deserialize)]
+#[serde(try_from = "FinancialImporterConfiguration")]
 pub struct FinancialImporter {
     pub accounts: AccountMap,
     pub import_file_definitions: ImportFileDefinitionMap,
 }
 
-// trace!("Loaded {} account alias definitions.", accounts.len());
+#[derive(Deserialize)]
+pub struct FinancialImporterConfiguration {
+    pub accounts: AccountMap,
+    pub import_file_definitions: ImportFileDefinitionMap,
+}
+
+impl TryFrom<FinancialImporterConfiguration> for FinancialImporter {
+    type Error = Error;
+
+    fn try_from(
+        FinancialImporterConfiguration {
+            accounts,
+            import_file_definitions,
+        }: FinancialImporterConfiguration,
+    ) -> Result<Self, Self::Error> {
+        trace!("Loaded {} account alias definitions.", accounts.len());
+
+        let validation_errors: Vec<_> = import_file_definitions
+            .values()
+            .flat_map(|matcher| matcher.validate_rule_account_aliases(&accounts))
+            .filter(Result::is_err)
+            .collect();
+
+        if validation_errors.is_empty() {
+            Ok(FinancialImporter {
+                accounts,
+                import_file_definitions,
+            })
+        } else {
+            validation_errors.into_iter().map(Result::unwrap_err).fold(
+                Err(eyre!(
+                    "One or more account alias validation errors were found:"
+                )),
+                color_eyre::Help::section,
+            )
+        }
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(try_from = "TransactionMatcherConfiguration")]
@@ -28,6 +70,18 @@ pub struct TransactionMatcher {
     pub rule_patterns: RegexSet,
 }
 
+impl TransactionMatcher {
+    fn validate_rule_account_aliases(&self, accounts: &AccountMap) -> Vec<Result<()>> {
+        self.transaction_rules
+            .iter()
+            .flat_map(|rule| {
+                // Ugly, but: https://users.rust-lang.org/t/flattening-a-vector-of-tuples/11409/4
+                let validations = rule.validate_account_aliases(accounts);
+                once(validations.0).chain(once(validations.1))
+            })
+            .collect()
+    }
+}
 #[derive(Deserialize)]
 pub struct TransactionMatcherConfiguration {
     // pub fallback_rule: TransactionRule,
@@ -40,10 +94,6 @@ impl TryFrom<TransactionMatcherConfiguration> for TransactionMatcher {
     fn try_from(
         TransactionMatcherConfiguration { transaction_rules }: TransactionMatcherConfiguration,
     ) -> Result<Self, Self::Error> {
-        // TODO: Accumulate and report errors for missing account aliases
-        // transaction_rules.iter().map(|&rule| {
-        //     accounts.contains_key(&rule.account1) && accounts.contains_key(&rule.account2)
-        // });
         let patterns = transaction_rules.iter().map(|rule| &rule.pattern_string);
         let rule_patterns: RegexSet = RegexSet::new(patterns)?;
         trace!(
@@ -71,6 +121,26 @@ pub struct TransactionRule {
     pub negate_first_amount: bool,
     pub pattern: Option<Regex>,
     pub payee_is_template: bool,
+}
+
+impl TransactionRule {
+    fn validate_account_aliases(&self, accounts: &AccountMap) -> (Result<()>, Result<()>) {
+        (
+            self.validate_alias(&self.account1, accounts),
+            self.validate_alias(&self.account2, accounts),
+        )
+    }
+
+    fn validate_alias(&self, account_alias: &str, accounts: &AccountMap) -> Result<()> {
+        if accounts.contains_key(account_alias) {
+            Ok(())
+        } else {
+            Err(eyre!(format!(
+                "Account Alias '{}' from Transaction Rule '{}' is not defined.",
+                account_alias, self.name
+            )))
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize)]

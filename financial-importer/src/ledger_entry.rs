@@ -23,7 +23,7 @@ impl fmt::Display for EntryLine {
 
         write!(f, "{}", *ENTRY_LINE_INDENT)?;
 
-        match *&self {
+        match self {
             EntryLine::Comment { comment } => {
                 write!(f, "; {}", comment)
             }
@@ -119,10 +119,10 @@ impl LedgerEntryBuilder {
 
 impl fmt::Display for LedgerEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}\n", self.date.format("%Y/%m/%d"), self.payee)?;
+        writeln!(f, "{} {}", self.date.format("%Y/%m/%d"), self.payee)?;
 
         for line in &self.lines {
-            write!(f, "{}\n", line)?;
+            writeln!(f, "{}", line)?;
         }
 
         Ok(())
