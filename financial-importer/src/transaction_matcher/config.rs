@@ -1,11 +1,11 @@
 use crate::app::{APP_NAME, DEFAULT_CONFIG_FILE_NAME};
-use crate::transaction_matcher::definitions::TransactionMatcher;
+use crate::transaction_matcher::definitions::FinancialImporter;
 use color_eyre::eyre::{eyre, Result, WrapErr};
 use log::{info, trace};
 use platform_dirs::AppDirs;
 use std::path::{Path, PathBuf};
 
-pub fn load_configuration(config_file: Option<PathBuf>) -> Result<TransactionMatcher> {
+pub fn load_configuration(config_file: Option<PathBuf>) -> Result<FinancialImporter> {
     let config_pathbuf: PathBuf = if let Some(config_pathname) = config_file {
         config_pathname
     } else {
@@ -27,8 +27,8 @@ pub fn load_configuration(config_file: Option<PathBuf>) -> Result<TransactionMat
 
     trace!("Starting configuration file validation.");
 
-    let matcher: TransactionMatcher = toml::from_str(&contents)?;
-    Ok(matcher)
+    let importer: FinancialImporter = toml::from_str(&contents)?;
+    Ok(importer)
 }
 
 fn default_config_filename() -> Option<PathBuf> {

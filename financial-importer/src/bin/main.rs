@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 use financial_importer::source_record;
 use financial_importer::source_record::SourceRecord;
 use financial_importer::transaction_matcher;
-use financial_importer::transaction_matcher::TransactionMatcher;
+use financial_importer::transaction_matcher::FinancialImporter;
 use financial_importer::{
     app::{LOG_ENV_VAR, VALIDATION_LOG_LEVEL},
     ledger_entry::LedgerEntry,
@@ -15,7 +15,7 @@ use structopt::StructOpt;
 #[structopt(name = "financial-importer")]
 struct App {
     // Common arguments:
-    #[structopt(long, short = "c", env = "IMPORTER_CONFIG_FILE", parse(from_os_str))]
+    #[structopt(long, short = "c", env = "FINANCIAL_IMPORTER_CONFIG", parse(from_os_str))]
     config_file: Option<PathBuf>,
     #[structopt(subcommand)]
     command: Command,
@@ -33,6 +33,8 @@ enum Command {
     },
     /// Process a CSV file to produce entries.
     ProcessCSV {
+        #[structopt(long, short = "format_name")]
+        format_name: String,
         #[structopt(long, short = "i", parse(from_os_str))]
         input_file: PathBuf,
     },
@@ -46,8 +48,7 @@ fn main() -> Result<()> {
     initialize_logging(&app);
 
     // Load the configuration
-    let transaction_matcher: TransactionMatcher =
-        transaction_matcher::load_configuration(app.config_file)?;
+    let importer: FinancialImporter = transaction_matcher::load_configuration(app.config_file)?;
 
     // Now, dispatch based on the command
     match app.command {
@@ -58,13 +59,13 @@ fn main() -> Result<()> {
                 input_file.to_str().unwrap()
             );
         }
-        Command::ProcessCSV { input_file } => process_csv(transaction_matcher, input_file)?,
+        Command::ProcessCSV { format_name, input_file } => process_csv(importer, format_name, input_file)?,
     }
 
     Ok(())
 }
 
-fn process_csv(transaction_matcher: TransactionMatcher, input_file: PathBuf) -> Result<()> {
+fn process_csv(importer: FinancialImporter, format_name: String, input_file: PathBuf) -> Result<()> {
     trace!(
         "Processing CSV using input file '{}'.",
         &input_file.to_str().unwrap()
@@ -73,7 +74,7 @@ fn process_csv(transaction_matcher: TransactionMatcher, input_file: PathBuf) -> 
 
     let (entries, _errors): (Vec<_>, Vec<_>) = records
         .iter()
-        .map(|record| transaction_matcher.ledger_entry_for_source_record(record))
+        .map(|record| importer.ledger_entry_for_source_record(&format_name, record))
         .partition(Result::is_ok);
 
     let entries: Vec<LedgerEntry> = entries.into_iter().filter_map(Result::unwrap).collect();
