@@ -58,25 +58,28 @@ fn main() -> Result<()> {
                 input_file.to_str().unwrap()
             );
         }
-        Command::ProcessCSV { input_file } => {
-            trace!(
-                "Processing CSV using input file '{}'.",
-                &input_file.to_str().unwrap()
-            );
-            let records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
+        Command::ProcessCSV { input_file } => process_csv(transaction_matcher, input_file)?,
+    }
 
-            let (entries, _errors): (Vec<_>, Vec<_>) = records
-                .iter()
-                .map(|record| transaction_matcher.ledger_entry_for_source_record(record))
-                .partition(Result::is_ok);
+    Ok(())
+}
 
-            let entries: Vec<LedgerEntry> =
-                entries.into_iter().filter_map(Result::unwrap).collect();
+fn process_csv(transaction_matcher: TransactionMatcher, input_file: PathBuf) -> Result<()> {
+    trace!(
+        "Processing CSV using input file '{}'.",
+        &input_file.to_str().unwrap()
+    );
+    let records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
 
-            for entry in entries {
-                println!("{}", entry);
-            }
-        }
+    let (entries, _errors): (Vec<_>, Vec<_>) = records
+        .iter()
+        .map(|record| transaction_matcher.ledger_entry_for_source_record(record))
+        .partition(Result::is_ok);
+
+    let entries: Vec<LedgerEntry> = entries.into_iter().filter_map(Result::unwrap).collect();
+
+    for entry in entries {
+        println!("{}", entry);
     }
 
     Ok(())

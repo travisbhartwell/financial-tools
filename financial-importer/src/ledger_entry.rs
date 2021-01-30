@@ -16,7 +16,8 @@ static RIGHT_ALIGN_COLUMN: usize = 67;
 impl fmt::Display for EntryLine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         lazy_static! {
-            static ref ENTRY_LINE_INDENT: String = String::from_utf8(vec![b' '; ENTRY_LINE_INDENT_AMOUNT]).unwrap();
+            static ref ENTRY_LINE_INDENT: String =
+                String::from_utf8(vec![b' '; ENTRY_LINE_INDENT_AMOUNT]).unwrap();
             static ref NUMBER_FORMAT: NumberFormat = NumberFormat::new();
         }
 
@@ -31,7 +32,7 @@ impl fmt::Display for EntryLine {
                 let formatted_amount: String = format!("${}", formatted_number);
                 // To right align at RIGHT_ALIGN_COLUMN, need to calculate the remaining size
                 let width: usize = RIGHT_ALIGN_COLUMN - ENTRY_LINE_INDENT_AMOUNT - account.len();
-                write!(f, "{} {:>width$}", account, formatted_amount, width=width)
+                write!(f, "{} {:>width$}", account, formatted_amount, width = width)
             }
         }
     }
