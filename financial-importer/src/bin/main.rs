@@ -70,15 +70,11 @@ fn main() -> Result<()> {
                 .map(|record| transaction_matcher.ledger_entry_for_source_record(record))
                 .partition(Result::is_ok);
 
-            let entries: Vec<LedgerEntry> = entries
-                .into_iter()
-                .map(Result::unwrap)
-                .filter(Option::is_some)
-                .map(Option::unwrap)
-                .collect();
+            let entries: Vec<LedgerEntry> =
+                entries.into_iter().filter_map(Result::unwrap).collect();
 
             for entry in entries {
-                println!("{:#?}", entry);
+                println!("{}", entry);
             }
         }
     }

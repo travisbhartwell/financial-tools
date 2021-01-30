@@ -1,5 +1,8 @@
 use chrono::NaiveDate;
 use color_eyre::eyre::{eyre, Result};
+use format_num::NumberFormat;
+use lazy_static::lazy_static;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum EntryLine {
@@ -7,11 +10,39 @@ pub enum EntryLine {
     Posting { account: String, amount: f64 },
 }
 
+static ENTRY_LINE_INDENT_AMOUNT: usize = 3;
+static RIGHT_ALIGN_COLUMN: usize = 67;
+
+impl fmt::Display for EntryLine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        lazy_static! {
+            static ref ENTRY_LINE_INDENT: String = String::from_utf8(vec![b' '; ENTRY_LINE_INDENT_AMOUNT]).unwrap();
+            static ref NUMBER_FORMAT: NumberFormat = NumberFormat::new();
+        }
+
+        write!(f, "{}", *ENTRY_LINE_INDENT)?;
+
+        match *&self {
+            EntryLine::Comment { comment } => {
+                write!(f, "; {}", comment)
+            }
+            EntryLine::Posting { account, amount } => {
+                let formatted_number: String = NUMBER_FORMAT.format(",.2f", *amount);
+                let formatted_amount: String = format!("${}", formatted_number);
+                // To right align at RIGHT_ALIGN_COLUMN, need to calculate the remaining size
+                let width: usize = RIGHT_ALIGN_COLUMN - ENTRY_LINE_INDENT_AMOUNT - account.len();
+                write!(f, "{} {:>width$}", account, formatted_amount, width=width)
+            }
+        }
+    }
+}
+
 pub struct LedgerEntryBuilder {
     pub date: NaiveDate,
     pub payee: String,
     pub lines: Vec<EntryLine>,
 }
+
 #[derive(Debug)]
 pub struct LedgerEntry {
     pub date: NaiveDate,
@@ -79,6 +110,18 @@ impl LedgerEntryBuilder {
                 "Ledger entry posting lines must balance, found total of {:.2}",
                 total
             ));
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for LedgerEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}\n", self.date.format("%Y/%m/%d"), self.payee)?;
+
+        for line in &self.lines {
+            write!(f, "{}\n", line)?;
         }
 
         Ok(())
