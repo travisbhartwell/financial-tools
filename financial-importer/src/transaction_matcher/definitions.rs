@@ -1,4 +1,4 @@
-use color_eyre::eyre::Error;
+use color_eyre::eyre::{Context, Error};
 use lazy_static::lazy_static;
 use log::trace;
 use regex::{Regex, RegexSet};
@@ -66,7 +66,6 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
         //     needs_finalized,
         //     negate_first_amount,
         // } = config;
-
         let name_string: String = match name {
             Some(name_string) => name_string,
             None => {
@@ -79,11 +78,13 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
 
         let payee_is_template: bool = PAYEE_TEMPLATE_RE.is_match(payee.as_str());
 
-        // We only need a separate Regex for the rule if the Payee is a template
+        // First compile the regex here to make sure it's valid
+        let pattern_re: Regex = Regex::new(pattern_string.as_str())?;
+
+        // We only need to keep a separate Regex for the rule if the Payee is a template
         // and thus requiring captures, which are not available for RegexSet.
         let pattern: Option<Regex> = if payee_is_template {
-            let pattern: Regex = Regex::new(pattern_string.as_str())?;
-            Some(pattern)
+            Some(pattern_re)
         } else {
             None
         };

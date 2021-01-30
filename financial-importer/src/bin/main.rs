@@ -1,5 +1,7 @@
 use color_eyre::eyre::Result;
 use financial_importer::app::{LOG_ENV_VAR, VALIDATION_LOG_LEVEL};
+use financial_importer::source_record;
+use financial_importer::source_record::SourceRecord;
 use financial_importer::transaction_matcher;
 use financial_importer::transaction_matcher::TransactionMatcher;
 use log::trace;
@@ -27,7 +29,10 @@ enum Command {
         input_file: PathBuf,
     },
     /// Process a CSV file to produce entries.
-    ProcessCSV,
+    ProcessCSV {
+        #[structopt(long, short = "i", parse(from_os_str))]
+        input_file: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -50,8 +55,12 @@ fn main() -> Result<()> {
                 input_file.to_str().unwrap()
             );
         }
-        Command::ProcessCSV => {
-            println!("Processing CSV!");
+        Command::ProcessCSV { input_file } => {
+            trace!(
+                "Processing CSV using input file '{}'.",
+                &input_file.to_str().unwrap()
+            );
+            let _records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
         }
     }
 

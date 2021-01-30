@@ -22,3 +22,5 @@ regex = "1"
 platform-dirs = "0.3.0"
 log = "0.4"
 pretty_env_logger = "0.4"
+chrono = { version = "0.4.19", features = ["serde"] }
+csv = "1.1"
