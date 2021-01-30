@@ -1,4 +1,4 @@
-use color_eyre::eyre::{Context, Error};
+use color_eyre::eyre::Error;
 use lazy_static::lazy_static;
 use log::trace;
 use regex::{Regex, RegexSet};

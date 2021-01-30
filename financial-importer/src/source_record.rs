@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 use color_eyre::eyre::Result;
-use log::trace;
+use log::{info, trace};
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -14,16 +14,30 @@ pub struct SourceRecord {
 pub fn load_source_records(input_path: PathBuf) -> Result<Vec<SourceRecord>> {
     let mut reader = csv::Reader::from_path(input_path)?;
 
-    // TODO: Figure out error handling
-    // - Collect into Vec<Result<SourceRecord,csv::Error>>
-    // - Partition in SourceRecord, csv::Error
-    // - Show errors, but continue
-    let rows: Vec<SourceRecord> = reader
+    let (rows, errors): (Vec<_>, Vec<_>) = reader
         .deserialize::<SourceRecord>()
-        .flat_map(|row| row)
-        .collect();
+        .into_iter()
+        .partition(Result::is_ok);
 
-    trace!("Successfully parsed {} source records.", rows.len());
+    let rows: Vec<SourceRecord> = rows.into_iter().map(Result::unwrap).collect();
+
+    trace!("Successfully loaded {} source records.", rows.len());
+    info!(
+        "Encountered {} errors in loading source records",
+        errors.len()
+    );
+
+    for error in errors {
+        let error = error.unwrap_err();
+        eprintln!("Got error: {:?}", error.kind());
+        if let Some(position) = error.position() {
+            eprintln!(
+                "\tError at Line: {}, Byte: {}",
+                position.line(),
+                position.byte()
+            );
+        }
+    }
 
     Ok(rows)
 }

@@ -61,6 +61,13 @@ fn main() -> Result<()> {
                 &input_file.to_str().unwrap()
             );
             let _records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
+
+            // for record in records {
+            //     println!(
+            //         "Date: {}, Description: '{}', Amount: {}",
+            //         record.date, record.description, record.amount
+            //     );
+            // }
         }
     }
 
