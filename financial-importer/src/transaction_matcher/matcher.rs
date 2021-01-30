@@ -18,20 +18,20 @@ pub enum GeneratedLedgerEntry<'a> {
     },
 }
 
-// impl<'a> GeneratedLedgerEntry<'a> {
-//     pub fn unwrap_entry(&self) -> &LedgerEntry {
-//         match self {
-//             GeneratedLedgerEntry::ByMatchedRule {
-//                 ledger_entry,
-//                 source_record: _,
-//             } => ledger_entry,
-//             GeneratedLedgerEntry::ByFallback {
-//                 ledger_entry,
-//                 source_record: _,
-//             } => ledger_entry,
-//         }
-//     }
-//}
+impl<'a> GeneratedLedgerEntry<'a> {
+    pub fn unwrap_entry(self) -> LedgerEntry {
+        match self {
+            GeneratedLedgerEntry::ByMatchedRule {
+                ledger_entry,
+                source_record: _,
+            } => ledger_entry,
+            GeneratedLedgerEntry::ByFallback {
+                ledger_entry,
+                source_record: _,
+            } => ledger_entry,
+        }
+    }
+}
 
 impl FinancialImporter {
     pub fn ledger_entry_for_source_record<'a>(

@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 use financial_importer::source_record;
 use financial_importer::source_record::SourceRecord;
 use financial_importer::transaction_matcher;
-use financial_importer::transaction_matcher::{FinancialImporter, GeneratedLedgerEntry};
+use financial_importer::transaction_matcher::FinancialImporter;
 use financial_importer::{
     app::{LOG_ENV_VAR, VALIDATION_LOG_LEVEL},
     ledger_entry::LedgerEntry,
@@ -85,19 +85,15 @@ fn process_csv(importer: &FinancialImporter, format_name: &str, input_file: Path
         .map(|record| importer.ledger_entry_for_source_record(&format_name, record))
         .partition(Result::is_ok);
 
-    let entries: Vec<GeneratedLedgerEntry> = entries.into_iter().map(Result::unwrap).collect();
+    // let entries: Vec<GeneratedLedgerEntry> = entries.into_iter().map(Result::unwrap).collect();
+    let entries: Vec<LedgerEntry> = entries
+        .into_iter()
+        .map(Result::unwrap)
+        .map(|generated| generated.unwrap_entry())
+        .collect();
 
     for entry in entries {
-        match entry {
-            GeneratedLedgerEntry::ByMatchedRule {
-                ledger_entry,
-                source_record: _,
-            } => println!("{}", ledger_entry),
-            GeneratedLedgerEntry::ByFallback {
-                ledger_entry,
-                source_record: _,
-            } => println!("{}", ledger_entry),
-        }
+        println!("{}", entry);
     }
 
     Ok(())
