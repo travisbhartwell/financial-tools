@@ -1,9 +1,12 @@
 use color_eyre::eyre::Result;
-use financial_importer::app::{LOG_ENV_VAR, VALIDATION_LOG_LEVEL};
 use financial_importer::source_record;
 use financial_importer::source_record::SourceRecord;
 use financial_importer::transaction_matcher;
 use financial_importer::transaction_matcher::TransactionMatcher;
+use financial_importer::{
+    app::{LOG_ENV_VAR, VALIDATION_LOG_LEVEL},
+    ledger_entry::LedgerEntry,
+};
 use log::trace;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -43,7 +46,7 @@ fn main() -> Result<()> {
     initialize_logging(&app);
 
     // Load the configuration
-    let _transaction_matcher: TransactionMatcher =
+    let transaction_matcher: TransactionMatcher =
         transaction_matcher::load_configuration(app.config_file)?;
 
     // Now, dispatch based on the command
@@ -60,14 +63,23 @@ fn main() -> Result<()> {
                 "Processing CSV using input file '{}'.",
                 &input_file.to_str().unwrap()
             );
-            let _records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
+            let records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
 
-            // for record in records {
-            //     println!(
-            //         "Date: {}, Description: '{}', Amount: {}",
-            //         record.date, record.description, record.amount
-            //     );
-            // }
+            let (entries, _errors): (Vec<_>, Vec<_>) = records
+                .iter()
+                .map(|record| transaction_matcher.ledger_entry_for_source_record(record))
+                .partition(Result::is_ok);
+
+            let entries: Vec<LedgerEntry> = entries
+                .into_iter()
+                .map(Result::unwrap)
+                .filter(Option::is_some)
+                .map(Option::unwrap)
+                .collect();
+
+            for entry in entries {
+                println!("{:#?}", entry);
+            }
         }
     }
 

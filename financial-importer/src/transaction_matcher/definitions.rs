@@ -35,8 +35,8 @@ pub struct TransactionRule {
     pub payee: Payee,
     pub needs_finalized: bool,
     pub negate_first_amount: bool,
-    pattern: Option<Regex>,
-    payee_is_template: bool,
+    pub pattern: Option<Regex>,
+    pub payee_is_template: bool,
 }
 
 impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
@@ -118,7 +118,7 @@ pub struct TransactionMatcherConfiguration {
 pub struct TransactionMatcher {
     pub accounts: AccountMap,
     pub transaction_rules: Vec<TransactionRule>,
-    rule_patterns: RegexSet,
+    pub rule_patterns: RegexSet,
 }
 
 impl TryFrom<TransactionMatcherConfiguration> for TransactionMatcher {
