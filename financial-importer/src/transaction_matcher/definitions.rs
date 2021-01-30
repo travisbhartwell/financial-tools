@@ -5,7 +5,7 @@ use color_eyre::{
 use lazy_static::lazy_static;
 use log::trace;
 use regex::{Regex, RegexSet};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::iter::once;
@@ -66,7 +66,7 @@ impl TryFrom<FinancialImporterConfiguration> for FinancialImporter {
 pub struct TransactionMatcher {
     // TODO pub file_format_name: String,
     pub transaction_rules: Vec<TransactionRule>,
-    // pub fallback_rule: TransactionRule,
+    pub fallback_rule: TransactionRule,
     pub rule_patterns: RegexSet,
 }
 
@@ -82,9 +82,10 @@ impl TransactionMatcher {
             .collect()
     }
 }
+
 #[derive(Deserialize)]
 pub struct TransactionMatcherConfiguration {
-    // pub fallback_rule: TransactionRule,
+    pub fallback_rule: FallbackRuleConfiguration,
     pub transaction_rules: Vec<TransactionRule>,
 }
 
@@ -92,7 +93,10 @@ impl TryFrom<TransactionMatcherConfiguration> for TransactionMatcher {
     type Error = Error;
 
     fn try_from(
-        TransactionMatcherConfiguration { transaction_rules }: TransactionMatcherConfiguration,
+        TransactionMatcherConfiguration {
+            fallback_rule,
+            transaction_rules,
+        }: TransactionMatcherConfiguration,
     ) -> Result<Self, Self::Error> {
         let patterns = transaction_rules.iter().map(|rule| &rule.pattern_string);
         let rule_patterns: RegexSet = RegexSet::new(patterns)?;
@@ -101,8 +105,11 @@ impl TryFrom<TransactionMatcherConfiguration> for TransactionMatcher {
             rule_patterns.len()
         );
 
+        let fallback_rule: TransactionRule = TransactionRule::try_from(fallback_rule)?;
+
         let matcher = TransactionMatcher {
             transaction_rules,
+            fallback_rule,
             rule_patterns,
         };
         Ok(matcher)
@@ -143,7 +150,7 @@ impl TransactionRule {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize)]
 pub struct TransactionRuleConfiguration {
     pub name: Option<String>,
     pub pattern_string: String,
@@ -204,6 +211,48 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
         };
 
         trace!("Loaded Transaction Rule: '{}'", &rule.name);
+
+        Ok(rule)
+    }
+}
+
+#[derive(Deserialize)]
+pub struct FallbackRuleConfiguration {
+    pub account1: String,
+    pub account2: String,
+    pub payee: String,
+    pub negate_first_amount: Option<bool>,
+}
+
+static FALLBACK_RULE_NAME: &str = "Fallback Transaction Rule";
+static FALLBACK_PATTERN_STRING: &str = ".*";
+
+impl TryFrom<FallbackRuleConfiguration> for TransactionRule {
+    type Error = Error;
+
+    fn try_from(
+        FallbackRuleConfiguration {
+            account1,
+            account2,
+            payee,
+            negate_first_amount,
+        }: FallbackRuleConfiguration,
+    ) -> Result<Self, Self::Error> {
+        let negate_first_amount_bool: bool = negate_first_amount.unwrap_or(false);
+
+        let rule = TransactionRule {
+            name: String::from(FALLBACK_RULE_NAME),
+            pattern_string: String::from(FALLBACK_PATTERN_STRING),
+            account1,
+            account2,
+            payee,
+            pattern: None, // Really don't need a pattern
+            payee_is_template: false,
+            needs_finalized: true, // Fallbacks always need finalized
+            negate_first_amount: negate_first_amount_bool,
+        };
+
+        trace!("Loaded fallback transaction rule");
 
         Ok(rule)
     }

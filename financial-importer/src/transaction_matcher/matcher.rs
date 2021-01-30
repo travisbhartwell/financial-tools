@@ -7,12 +7,38 @@ use crate::source_record;
 
 use super::definitions::{AccountMap, FinancialImporter, TransactionMatcher, TransactionRule};
 
+pub enum GeneratedLedgerEntry<'a> {
+    ByMatchedRule {
+        ledger_entry: LedgerEntry,
+        source_record: &'a SourceRecord,
+    },
+    ByFallback {
+        ledger_entry: LedgerEntry,
+        source_record: &'a SourceRecord,
+    },
+}
+
+// impl<'a> GeneratedLedgerEntry<'a> {
+//     pub fn unwrap_entry(&self) -> &LedgerEntry {
+//         match self {
+//             GeneratedLedgerEntry::ByMatchedRule {
+//                 ledger_entry,
+//                 source_record: _,
+//             } => ledger_entry,
+//             GeneratedLedgerEntry::ByFallback {
+//                 ledger_entry,
+//                 source_record: _,
+//             } => ledger_entry,
+//         }
+//     }
+//}
+
 impl FinancialImporter {
-    pub fn ledger_entry_for_source_record(
+    pub fn ledger_entry_for_source_record<'a>(
         &self,
         file_format: &str,
-        record: &SourceRecord,
-    ) -> Result<Option<LedgerEntry>> {
+        record: &'a SourceRecord,
+    ) -> Result<GeneratedLedgerEntry<'a>> {
         let matcher: &TransactionMatcher = self
             .import_file_definitions
             .get(file_format)
@@ -28,11 +54,11 @@ impl FinancialImporter {
 }
 
 impl TransactionMatcher {
-    pub fn ledger_entry_for_source_record(
+    pub fn ledger_entry_for_source_record<'a>(
         &self,
         accounts: &AccountMap,
-        record: &SourceRecord,
-    ) -> Result<Option<LedgerEntry>> {
+        record: &'a SourceRecord,
+    ) -> Result<GeneratedLedgerEntry<'a>> {
         let rule_matches: Vec<_> = self
             .rule_patterns
             .matches(&record.description)
@@ -42,10 +68,20 @@ impl TransactionMatcher {
         match rule_matches.len() {
             0 => {
                 trace!(
-                    "No match found for record with description '{}'",
+                    "No match found for record with description '{}', using fallback rule.",
                     record.description
                 );
-                Ok(None)
+
+                match self
+                    .fallback_rule
+                    .ledger_entry_for_source_record(accounts, record)
+                {
+                    Ok(ledger_entry) => Ok(GeneratedLedgerEntry::ByFallback {
+                        ledger_entry,
+                        source_record: record,
+                    }),
+                    Err(e) => Err(e),
+                }
             }
             1 => {
                 let rule_index = rule_matches[0];
@@ -58,7 +94,10 @@ impl TransactionMatcher {
                 );
 
                 match rule.ledger_entry_for_source_record(accounts, record) {
-                    Ok(posting) => Ok(Some(posting)),
+                    Ok(ledger_entry) => Ok(GeneratedLedgerEntry::ByMatchedRule {
+                        ledger_entry,
+                        source_record: record,
+                    }),
                     Err(e) => Err(e),
                 }
             }
