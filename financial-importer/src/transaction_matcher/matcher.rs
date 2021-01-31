@@ -1,6 +1,7 @@
 use color_eyre::eyre::{eyre, Result};
 use log::trace;
 use source_record::SourceRecord;
+use voca_rs::case;
 
 use crate::ledger_entry::{LedgerEntry, LedgerEntryBuilder};
 use crate::source_record;
@@ -162,7 +163,7 @@ impl TransactionRule {
                 let mut payee = String::new();
                 let templates = pattern.captures(&record.description).unwrap();
                 templates.expand(&self.payee, &mut payee);
-                payee
+                case::title_case(payee.as_str())
             } else {
                 panic!("Regex missing for template pattern!")
             }

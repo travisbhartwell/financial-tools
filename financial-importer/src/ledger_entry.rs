@@ -13,7 +13,7 @@ pub enum EntryLine {
     Posting { account: String, amount: f64 },
 }
 
-static ENTRY_LINE_INDENT_AMOUNT: usize = 3;
+static ENTRY_LINE_INDENT_AMOUNT: usize = 4;
 static RIGHT_ALIGN_COLUMN: usize = 67;
 
 impl fmt::Display for EntryLine {
