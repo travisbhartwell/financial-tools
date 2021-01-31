@@ -1,11 +1,11 @@
 use color_eyre::eyre::Result;
 use financial_importer::source_record;
-use financial_importer::source_record::SourceRecord;
+use financial_importer::source_record::{write_source_records, SourceRecord};
 use financial_importer::transaction_matcher;
-use financial_importer::transaction_matcher::FinancialImporter;
+use financial_importer::transaction_matcher::{FinancialImporter, GeneratedLedgerEntry};
 use financial_importer::{
     app::{LOG_ENV_VAR, VALIDATION_LOG_LEVEL},
-    ledger_entry::LedgerEntry,
+    ledger_entry::{write_ledger_entries_file, LedgerEntry},
 };
 use log::trace;
 use std::path::PathBuf;
@@ -42,6 +42,15 @@ enum Command {
         format_name: String,
         #[structopt(long, short = "i", parse(from_os_str))]
         input_file: PathBuf,
+        #[structopt(long, short = "u", parse(from_os_str))]
+        unmatched_records_file: Option<PathBuf>,
+        #[structopt(
+            long,
+            short = "l",
+            parse(from_os_str),
+            default_value = "ledger-postings.dat"
+        )]
+        ledger_output_file: PathBuf,
     },
 }
 
@@ -67,17 +76,28 @@ fn main() -> Result<()> {
         Command::ProcessCSV {
             format_name,
             input_file,
-        } => process_csv(&importer, format_name.as_str(), input_file)?,
+            unmatched_records_file,
+            ledger_output_file,
+        } => process_csv(
+            &importer,
+            format_name.as_str(),
+            input_file,
+            unmatched_records_file,
+            &ledger_output_file,
+        )?,
     }
 
     Ok(())
 }
 
-fn process_csv(importer: &FinancialImporter, format_name: &str, input_file: PathBuf) -> Result<()> {
-    trace!(
-        "Processing CSV using input file '{}'.",
-        &input_file.to_str().unwrap()
-    );
+fn process_csv(
+    importer: &FinancialImporter,
+    format_name: &str,
+    input_file: PathBuf,
+    unmatched_records_file: Option<PathBuf>,
+    ledger_output_file: &PathBuf,
+) -> Result<()> {
+    let unmatched_records_path = get_unmatched_file_path(unmatched_records_file, &input_file);
     let records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
 
     let (entries, _errors): (Vec<_>, Vec<_>) = records
@@ -85,18 +105,52 @@ fn process_csv(importer: &FinancialImporter, format_name: &str, input_file: Path
         .map(|record| importer.ledger_entry_for_source_record(&format_name, record))
         .partition(Result::is_ok);
 
-    // let entries: Vec<GeneratedLedgerEntry> = entries.into_iter().map(Result::unwrap).collect();
-    let entries: Vec<LedgerEntry> = entries
+    // This is going to be a little messy, but I need to do it this way to report everything
+    let (matched_entries, unmatched_entries): (Vec<_>, Vec<_>) = entries
         .into_iter()
         .map(Result::unwrap)
-        .map(|generated| generated.unwrap_entry())
+        .partition(GeneratedLedgerEntry::from_matched_rule);
+
+    let (unmatched_entries, mut unmatched_records): (Vec<_>, Vec<_>) = unmatched_entries
+        .into_iter()
+        .map(GeneratedLedgerEntry::unwrap)
+        .unzip();
+
+    unmatched_records.sort();
+    write_source_records(&unmatched_records_path, &unmatched_records)?;
+
+    let mut entries: Vec<LedgerEntry> = matched_entries
+        .into_iter()
+        .map(GeneratedLedgerEntry::unwrap_entry)
         .collect();
 
-    for entry in entries {
-        println!("{}", entry);
-    }
+    let mut unmatched_entries = unmatched_entries;
+    entries.append(&mut unmatched_entries);
+    entries.sort();
+
+    write_ledger_entries_file(&ledger_output_file, entries)?;
 
     Ok(())
+}
+
+static UNMATCHED_RECORDS_FILE_SUFFIX: &str = "-unmatched";
+
+fn get_unmatched_file_path(
+    unmatched_records_file: Option<PathBuf>,
+    input_file: &PathBuf,
+) -> PathBuf {
+    unmatched_records_file.map_or_else(
+        || {
+            let mut unmatched_records_path = PathBuf::new();
+            unmatched_records_path.push(input_file.parent().unwrap());
+            let mut filename = input_file.file_stem().unwrap().to_os_string();
+            filename.push(UNMATCHED_RECORDS_FILE_SUFFIX);
+            unmatched_records_path.push(filename);
+            unmatched_records_path.set_extension(input_file.extension().unwrap());
+            unmatched_records_path
+        },
+        |unmatched_records_file| unmatched_records_file,
+    )
 }
 
 fn initialize_logging(app: &App) {

@@ -3,6 +3,9 @@ use color_eyre::eyre::{eyre, Result};
 use format_num::NumberFormat;
 use lazy_static::lazy_static;
 use std::fmt;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum EntryLine {
@@ -50,6 +53,26 @@ pub struct LedgerEntry {
     pub payee: String,
     pub lines: Vec<EntryLine>,
 }
+
+impl Ord for LedgerEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.date, &self.payee).cmp(&(other.date, &other.payee))
+    }
+}
+
+impl PartialOrd for LedgerEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for LedgerEntry {
+    fn eq(&self, other: &Self) -> bool {
+        (self.date, &self.payee) == (other.date, &other.payee)
+    }
+}
+
+impl Eq for LedgerEntry {}
 
 impl LedgerEntryBuilder {
     #[must_use]
@@ -127,4 +150,15 @@ impl fmt::Display for LedgerEntry {
 
         Ok(())
     }
+}
+
+pub fn write_ledger_entries_file(filename: &PathBuf, entries: Vec<LedgerEntry>) -> Result<()> {
+    // TODO: Check to avoid overwriting existing file
+    let mut output_file = File::create(filename.as_path())?;
+
+    for entry in entries {
+        writeln!(output_file, "{}", entry)?;
+    }
+
+    Ok(())
 }

@@ -19,17 +19,51 @@ pub enum GeneratedLedgerEntry<'a> {
 }
 
 impl<'a> GeneratedLedgerEntry<'a> {
+    #[must_use]
     pub fn unwrap_entry(self) -> LedgerEntry {
         match self {
             GeneratedLedgerEntry::ByMatchedRule {
                 ledger_entry,
                 source_record: _,
-            } => ledger_entry,
-            GeneratedLedgerEntry::ByFallback {
+            }
+            | GeneratedLedgerEntry::ByFallback {
                 ledger_entry,
                 source_record: _,
             } => ledger_entry,
         }
+    }
+
+    #[must_use]
+    pub fn unwrap_source_record(self) -> &'a SourceRecord {
+        match self {
+            GeneratedLedgerEntry::ByMatchedRule {
+                ledger_entry: _,
+                source_record,
+            }
+            | GeneratedLedgerEntry::ByFallback {
+                ledger_entry: _,
+                source_record,
+            } => source_record,
+        }
+    }
+
+    #[must_use]
+    pub fn unwrap(self) -> (LedgerEntry, &'a SourceRecord) {
+        match self {
+            GeneratedLedgerEntry::ByMatchedRule {
+                ledger_entry,
+                source_record,
+            }
+            | GeneratedLedgerEntry::ByFallback {
+                ledger_entry,
+                source_record,
+            } => (ledger_entry, source_record),
+        }
+    }
+
+    #[must_use]
+    pub fn from_matched_rule(&self) -> bool {
+        matches!(*self, GeneratedLedgerEntry::ByMatchedRule { .. })
     }
 }
 
