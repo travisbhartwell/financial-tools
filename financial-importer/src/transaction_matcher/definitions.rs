@@ -2,7 +2,6 @@ use color_eyre::{
     eyre::{eyre, Error},
     Result,
 };
-use lazy_static::lazy_static;
 use log::trace;
 use regex::{Regex, RegexSet};
 use serde::Deserialize;
@@ -175,9 +174,6 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
             negate_first_amount,
         }: TransactionRuleConfiguration,
     ) -> Result<Self, Self::Error> {
-        lazy_static! {
-            static ref PAYEE_TEMPLATE_RE: Regex = Regex::new(r"\{[^}]+\}").unwrap();
-        }
         let name_string: String = match name {
             Some(name_string) => name_string,
             None => {
@@ -186,7 +182,9 @@ impl TryFrom<TransactionRuleConfiguration> for TransactionRule {
         };
         let needs_finalized_bool: bool = needs_finalized.unwrap_or(false);
         let negate_first_amount_bool: bool = negate_first_amount.unwrap_or(false);
-        let payee_is_template: bool = PAYEE_TEMPLATE_RE.is_match(payee.as_str());
+
+        // Simple -- if there is a '$' in the payee
+        let payee_is_template: bool = payee.contains('$');
 
         // First compile the regex here to make sure it's valid
         let pattern_re: Regex = Regex::new(pattern_string.as_str())?;
@@ -246,9 +244,9 @@ impl TryFrom<FallbackRuleConfiguration> for TransactionRule {
             account1,
             account2,
             payee,
-            pattern: None, // Really don't need a pattern
-            payee_is_template: false,
-            needs_finalized: true, // Fallbacks always need finalized
+            pattern: None,            // Really don't need a pattern
+            payee_is_template: false, // We hardcode the payee, so it's not a template
+            needs_finalized: true,    // Fallbacks always need finalized
             negate_first_amount: negate_first_amount_bool,
         };
 

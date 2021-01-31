@@ -157,9 +157,20 @@ impl TransactionRule {
         account_map: &AccountMap,
         record: &SourceRecord,
     ) -> Result<LedgerEntry> {
-        // TODO Handle template case for the Payee
-        let mut entry_builder: LedgerEntryBuilder =
-            LedgerEntryBuilder::new(record.date, self.payee.clone());
+        let payee = if self.payee_is_template {
+            if let Some(pattern) = &self.pattern {
+                let mut payee = String::new();
+                let templates = pattern.captures(&record.description).unwrap();
+                templates.expand(&self.payee, &mut payee);
+                payee
+            } else {
+                panic!("Regex missing for template pattern!")
+            }
+        } else {
+            self.payee.clone()
+        };
+
+        let mut entry_builder: LedgerEntryBuilder = LedgerEntryBuilder::new(record.date, payee);
 
         // Add the source record description as a comment:
         entry_builder.add_comment(format!("{}: {}", SOURCE_COMMENT, record.description));
