@@ -39,10 +39,13 @@ def transaction_fields(line: str, year: str):
 def cleanup_commas(line: str):
     return line.replace(",,", ",")
 
+START_QUOTE_RE = re.compile(r'^"(?P<date>\d{2}\/\d{2}) (?P<rest>[^"]+".*)')
+
 def fix_quoting(line: str):
-    # "10/27 I V Y LABS, INC. HTTPSWWW.TALK CAA"
-    if line[0] == '"' and ("I V Y" in line):
-        return line[1:6] + ',"' + line[7:]
+    if match := START_QUOTE_RE.match(line):
+        date_part = match.group("date")
+        rest_part = match.group("rest")
+        return f'{date_part},"{rest_part}'
     else:
         return line
 
@@ -57,10 +60,18 @@ def write_output_file(transactions_by_fields, output_filename):
         writer.writeheader()
         writer.writerows(transactions_by_fields)
 
+def check_lines_contains_string(search, log, lines):
+    if any([search in line for line in lines]):
+        print(f"Search '{search}' found at step: '{log}'")
+
+        for line in lines:
+            if search in line:
+                print(f"Line: '{line}'")
+
 def main(input_filename, output_filename, year):
     # Load full input
     input_content = load_input(input_filename)
-
+    
     # First clean up lines so they match:
     input_content = [fix_quoting(line) for line in input_content]
 
