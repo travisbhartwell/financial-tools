@@ -81,7 +81,7 @@ fn main() -> Result<()> {
         } => process_csv(
             &importer,
             format_name.as_str(),
-            input_file,
+            &input_file,
             unmatched_records_file,
             &ledger_output_file,
         )?,
@@ -93,12 +93,20 @@ fn main() -> Result<()> {
 fn process_csv(
     importer: &FinancialImporter,
     format_name: &str,
-    input_file: PathBuf,
+    input_file: &PathBuf,
     unmatched_records_file: Option<PathBuf>,
     ledger_output_file: &PathBuf,
 ) -> Result<()> {
-    let unmatched_records_path = get_unmatched_file_path(unmatched_records_file, &input_file);
+    println!("Summary: ");
+
+    let unmatched_records_path = get_unmatched_file_path(unmatched_records_file, input_file);
     let records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
+
+    println!(
+        "- Loaded {} source records from file {}.\n",
+        records.len(),
+        input_file.to_str().unwrap()
+    );
 
     let (entries, _errors): (Vec<_>, Vec<_>) = records
         .iter()
@@ -124,11 +132,34 @@ fn process_csv(
         .map(GeneratedLedgerEntry::unwrap_entry)
         .collect();
 
+    let matched_count = entries.len();
+    let unmatched_count = unmatched_entries.len();
+
     let mut unmatched_entries = unmatched_entries;
     entries.append(&mut unmatched_entries);
     entries.sort();
 
+    let entries_count = entries.len();
     write_ledger_entries_file(&ledger_output_file, entries)?;
+
+    println!(
+        "- Wrote {} Ledger entries to file {}.",
+        entries_count,
+        ledger_output_file.to_str().unwrap()
+    );
+    println!(
+        "   - {} Ledger entries generated from matching transaction rules.",
+        matched_count
+    );
+    println!(
+        "   - {} Ledger entries generated using the fallback rule.\n",
+        unmatched_count
+    );
+    println!(
+        "- Wrote {} unmatched source records to the file {}.",
+        unmatched_count,
+        unmatched_records_path.to_str().unwrap()
+    );
 
     Ok(())
 }

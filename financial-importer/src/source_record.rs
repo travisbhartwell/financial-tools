@@ -31,10 +31,10 @@ impl PartialEq for SourceRecord {
 
 impl Eq for SourceRecord {}
 
-pub fn load_source_records(input_path: PathBuf) -> Result<Vec<SourceRecord>> {
+pub fn load_source_records(input_path: &PathBuf) -> Result<Vec<SourceRecord>> {
     trace!(
         "Processing CSV using input file '{}'.",
-        &input_path.to_str().unwrap()
+        input_path.to_str().unwrap()
     );
     let mut reader = csv::Reader::from_path(input_path)?;
     let (rows, errors): (Vec<_>, Vec<_>) = reader
