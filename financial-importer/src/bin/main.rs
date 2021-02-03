@@ -98,6 +98,7 @@ fn process_csv(
     ledger_output_file: &PathBuf,
 ) -> Result<()> {
     println!("Summary: ");
+    println!("- Using the file format definition \"{}\".", &format_name);
 
     let unmatched_records_path = get_unmatched_file_path(unmatched_records_file, input_file);
     let records: Vec<SourceRecord> = source_record::load_source_records(input_file)?;
