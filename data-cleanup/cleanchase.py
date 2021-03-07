@@ -5,11 +5,8 @@ import os.path
 import re
 import sys
 
-COLUMN_NAMES = [
-    "date",
-    "description",
-    "amount"
-]
+from clean import COLUMN_NAMES, write_output_file
+
 
 def load_input(input_filename):
     with open(input_filename) as f:
@@ -17,29 +14,37 @@ def load_input(input_filename):
 
     return content
 
-TRANSACTION_FIELDS_RE = re.compile(r"^(?P<month>\d{2})\/(?P<day>\d{2})[ ,](?P<description>.*),(?P<amount>[^,]+)$")
+
+TRANSACTION_FIELDS_RE = re.compile(
+    r"^(?P<month>\d{2})\/(?P<day>\d{2})[ ,](?P<description>.*),(?P<amount>[^,]+)$"
+)
+
 
 def transaction_fields(line: str, year: str):
-    month = line[0:2]; day = line[3:5]
+    month = line[0:2]
+    day = line[3:5]
 
     if line[6] == '"':
         end = line.index('"', 7) + 1
     else:
-        end = line.index(',', 7)
+        end = line.index(",", 7)
 
     description = f"{line[6:end]}"
-    amount = line[end + 1:].replace('"', '').replace(",", "")
+    amount = line[end + 1 :].replace('"', "").replace(",", "")
 
     return {
         "date": f"{year}-{month}-{day}",
         "description": description,
-        "amount": amount
+        "amount": amount,
     }
+
 
 def cleanup_commas(line: str):
     return line.replace(",,", ",")
 
+
 START_QUOTE_RE = re.compile(r'^"(?P<date>\d{2}\/\d{2}) (?P<rest>[^"]+".*)')
+
 
 def fix_quoting(line: str):
     if match := START_QUOTE_RE.match(line):
@@ -49,16 +54,13 @@ def fix_quoting(line: str):
     else:
         return line
 
+
 TRANSACTION_LINE_RE = re.compile(r"^\d{2}")
+
 
 def is_transaction_line(line: str):
     return TRANSACTION_LINE_RE.match(line) is not None
 
-def write_output_file(transactions_by_fields, output_filename):
-    with open(output_filename, "w") as f:
-        writer = csv.DictWriter(f, fieldnames=COLUMN_NAMES)
-        writer.writeheader()
-        writer.writerows(transactions_by_fields)
 
 def check_lines_contains_string(search, log, lines):
     if any([search in line for line in lines]):
@@ -68,10 +70,11 @@ def check_lines_contains_string(search, log, lines):
             if search in line:
                 print(f"Line: '{line}'")
 
+
 def main(input_filename, output_filename, year):
     # Load full input
     input_content = load_input(input_filename)
-    
+
     # First clean up lines so they match:
     input_content = [fix_quoting(line) for line in input_content]
 
@@ -82,12 +85,15 @@ def main(input_filename, output_filename, year):
     transaction_lines = [cleanup_commas(line) for line in transaction_lines]
 
     # Grab fields
-    transactions_by_fields = [transaction_fields(line, year) for line in transaction_lines]
+    transactions_by_fields = [
+        transaction_fields(line, year) for line in transaction_lines
+    ]
 
     # Write CSV
     write_output_file(transactions_by_fields, output_filename)
 
     return 0
+
 
 if __name__ == "__main__":
     if len(sys.argv[1:]) < 3:
