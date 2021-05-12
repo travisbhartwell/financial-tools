@@ -8,7 +8,7 @@ use financial_importer::{
     ledger_entry::{write_ledger_entries_file, LedgerEntry},
 };
 use log::trace;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -93,9 +93,9 @@ fn main() -> Result<()> {
 fn process_csv(
     importer: &FinancialImporter,
     format_name: &str,
-    input_file: &PathBuf,
+    input_file: &Path,
     unmatched_records_file: Option<PathBuf>,
-    ledger_output_file: &PathBuf,
+    ledger_output_file: &Path,
 ) -> Result<()> {
     println!("Summary: ");
     println!("- Using the file format definition \"{}\".", &format_name);
@@ -167,10 +167,7 @@ fn process_csv(
 
 static UNMATCHED_RECORDS_FILE_SUFFIX: &str = "-unmatched";
 
-fn get_unmatched_file_path(
-    unmatched_records_file: Option<PathBuf>,
-    input_file: &PathBuf,
-) -> PathBuf {
+fn get_unmatched_file_path(unmatched_records_file: Option<PathBuf>, input_file: &Path) -> PathBuf {
     unmatched_records_file.map_or_else(
         || {
             let mut unmatched_records_path = PathBuf::new();

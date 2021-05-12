@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use color_eyre::eyre::Result;
 use log::{info, trace};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SourceRecord {
@@ -31,7 +31,7 @@ impl PartialEq for SourceRecord {
 
 impl Eq for SourceRecord {}
 
-pub fn load_source_records(input_path: &PathBuf) -> Result<Vec<SourceRecord>> {
+pub fn load_source_records(input_path: &Path) -> Result<Vec<SourceRecord>> {
     trace!(
         "Processing CSV using input file '{}'.",
         input_path.to_str().unwrap()
@@ -68,7 +68,7 @@ pub fn load_source_records(input_path: &PathBuf) -> Result<Vec<SourceRecord>> {
     Ok(rows)
 }
 
-pub fn write_source_records(output_path: &PathBuf, source_records: &[&SourceRecord]) -> Result<()> {
+pub fn write_source_records(output_path: &Path, source_records: &[&SourceRecord]) -> Result<()> {
     trace!(
         "Writing unmatched source records to '{}'.",
         output_path.to_str().unwrap()

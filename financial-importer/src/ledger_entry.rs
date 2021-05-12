@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use std::fmt;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Debug)]
 pub enum EntryLine {
@@ -152,9 +152,9 @@ impl fmt::Display for LedgerEntry {
     }
 }
 
-pub fn write_ledger_entries_file(filename: &PathBuf, entries: Vec<LedgerEntry>) -> Result<()> {
+pub fn write_ledger_entries_file(filename: &Path, entries: Vec<LedgerEntry>) -> Result<()> {
     // TODO: Check to avoid overwriting existing file
-    let mut output_file = File::create(filename.as_path())?;
+    let mut output_file = File::create(filename)?;
 
     for entry in entries {
         writeln!(output_file, "{}", entry)?;
