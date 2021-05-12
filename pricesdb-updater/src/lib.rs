@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
     time::{Duration, UNIX_EPOCH},
 };
-use yahoo_finance_api;
+
 #[derive(Debug)]
 pub struct HistoricPrice {
     timestamp: DateTime<Local>,
@@ -100,7 +100,7 @@ pub fn write_pricesdb_file(
     let mut output_file = File::create(filename.as_path())?;
 
     for price in prices_history.iter() {
-        write!(output_file, "{}\n", price)?;
+        writeln!(output_file, "{}", price)?;
     }
 
     Ok(())
