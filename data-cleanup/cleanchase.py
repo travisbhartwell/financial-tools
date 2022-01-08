@@ -23,16 +23,8 @@ TRANSACTION_FIELDS_RE = re.compile(
 def transaction_fields(line: str, year: str):
     month = line[0:2]
     day = line[3:5]
-
-    if line[6] == '"':
-        end = line.index('"', 7) + 1
-    else:
-        end = line.index(",", 7)
-
-    if line[5] in [',', ' ', '"']:
-        desc_start = 6
-    else:
-        desc_start = 5
+    end = line.index('"', 7) + 1 if line[6] == '"' else line.index(",", 7)
+    desc_start = 6 if line[5] in [',', ' ', '"'] else 5
 
     description = f"{line[desc_start:end]}"
     amount = line[end + 1 :].replace('"', "").replace(",", "")
