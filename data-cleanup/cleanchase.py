@@ -29,7 +29,12 @@ def transaction_fields(line: str, year: str):
     else:
         end = line.index(",", 7)
 
-    description = f"{line[6:end]}"
+    if line[5] in [',', ' ', '"']:
+        desc_start = 6
+    else:
+        desc_start = 5
+
+    description = f"{line[desc_start:end]}"
     amount = line[end + 1 :].replace('"', "").replace(",", "")
 
     return {
@@ -37,7 +42,6 @@ def transaction_fields(line: str, year: str):
         "description": description,
         "amount": amount,
     }
-
 
 def cleanup_commas(line: str):
     return line.replace(",,", ",")
