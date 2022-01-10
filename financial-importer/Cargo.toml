@@ -14,15 +14,15 @@ path = "src/bin/main.rs"
 
 [dependencies]
 chrono = { version = "0.4.19", features = ["serde"] }
-color-eyre = "0.5.10"
-csv = "1.1.5"
+color-eyre = "0.5.11"
+csv = "1.1.6"
 format_num = "0.1.0"
 lazy_static = "1.4.0"
 log = "0.4.14"
 platform-dirs = "0.3.0"
 pretty_env_logger = "0.4.0"
-regex = "1.4.3"
-serde = { version = "1.0.123", features = ["derive"] }
-structopt = "0.3.21"
+regex = "1.5.4"
+serde = { version = "1.0.133", features = ["derive"] }
+structopt = "0.3.25"
 toml = "0.5.8"
-voca_rs = "1.13.0"
+voca_rs = "1.14.0"
