@@ -111,7 +111,7 @@ fn process_csv(
 
     let (entries, _errors): (Vec<_>, Vec<_>) = records
         .iter()
-        .map(|record| importer.ledger_entry_for_source_record(&format_name, record))
+        .map(|record| importer.ledger_entry_for_source_record(format_name, record))
         .partition(Result::is_ok);
 
     // This is going to be a little messy, but I need to do it this way to report everything
@@ -141,7 +141,7 @@ fn process_csv(
     entries.sort();
 
     let entries_count = entries.len();
-    write_ledger_entries_file(&ledger_output_file, entries)?;
+    write_ledger_entries_file(ledger_output_file, entries)?;
 
     println!(
         "- Wrote {} Ledger entries to file {}.",
@@ -195,5 +195,5 @@ fn initialize_logging(app: &App) {
         }
     }
 
-    pretty_env_logger::init_custom_env(&LOG_ENV_VAR);
+    pretty_env_logger::init_custom_env(LOG_ENV_VAR);
 }
