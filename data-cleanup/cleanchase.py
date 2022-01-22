@@ -20,8 +20,12 @@ TRANSACTION_FIELDS_RE = re.compile(
 )
 
 
-def transaction_fields(line: str, year: str):
+def transaction_fields(line: str, year: str, is_jan: bool):
     month = line[0:2]
+
+    if is_jan:
+        year = str(int(year) - 1) if month == "12" else year
+
     day = line[3:5]
     end = line.index('"', 7) + 1 if line[6] == '"' else line.index(",", 7)
     desc_start = 6 if line[5] in [',', ' ', '"'] else 5
@@ -67,7 +71,7 @@ def check_lines_contains_string(search, log, lines):
                 print(f"Line: '{line}'")
 
 
-def main(input_filename, output_filename, year):
+def main(input_filename, output_filename, year, is_jan):
     # Load full input
     input_content = load_input(input_filename)
 
@@ -82,7 +86,7 @@ def main(input_filename, output_filename, year):
 
     # Grab fields
     transactions_by_fields = [
-        transaction_fields(line, year) for line in transaction_lines
+        transaction_fields(line, year, is_jan) for line in transaction_lines
     ]
 
     # Write CSV
@@ -92,13 +96,20 @@ def main(input_filename, output_filename, year):
 
 
 if __name__ == "__main__":
-    if len(sys.argv[1:]) < 3:
+    args = sys.argv[1:]
+
+    if len(args) < 3:
         print("Usage: \n")
-        print(f"\t{os.path.basename(__file__)} <input_file> <output_file> <year>")
+        print(f"\t{os.path.basename(__file__)} <input_file> <output_file> <year> [--january-statement]")
         sys.exit(1)
 
+    # We handle January statements different as they straddle the year
+    is_jan = len(args) > 3 and args[3] == "--january-statement"
+
+    print(f"Is January: {is_jan}")
+
     try:
-        result = main(sys.argv[1], sys.argv[2], sys.argv[3])
+        result = main(args[0], args[1], args[2], is_jan)
     except Exception as e:
         result = 1
         print(f"{str(e)}", file=sys.stderr)
