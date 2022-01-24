@@ -1,4 +1,4 @@
-use color_eyre::eyre::Result;
+use color_eyre::{eyre::eyre, Result, Section};
 use financial_importer::source_record;
 use financial_importer::source_record::{write_source_records, SourceRecord};
 use financial_importer::transaction_matcher;
@@ -109,7 +109,7 @@ fn process_csv(
         input_file.to_str().unwrap()
     );
 
-    let (entries, _errors): (Vec<_>, Vec<_>) = records
+    let (entries, errors): (Vec<_>, Vec<_>) = records
         .iter()
         .map(|record| importer.ledger_entry_for_source_record(format_name, record))
         .partition(Result::is_ok);
@@ -162,7 +162,14 @@ fn process_csv(
         unmatched_records_path.to_str().unwrap()
     );
 
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        errors.into_iter().map(Result::unwrap_err).fold(
+            Err(eyre!("One or more errors were reported!")),
+            |report, e| report.section(e),
+        )
+    }
 }
 
 static UNMATCHED_RECORDS_FILE_SUFFIX: &str = "-unmatched";

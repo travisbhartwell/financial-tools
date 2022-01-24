@@ -106,8 +106,6 @@ if __name__ == "__main__":
     # We handle January statements different as they straddle the year
     is_jan = len(args) > 3 and args[3] == "--january-statement"
 
-    print(f"Is January: {is_jan}")
-
     try:
         result = main(args[0], args[1], args[2], is_jan)
     except Exception as e:

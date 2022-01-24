@@ -8,6 +8,7 @@ use crate::source_record;
 
 use super::definitions::{AccountMap, FinancialImporter, TransactionMatcher, TransactionRule};
 
+#[derive(Debug)]
 pub enum GeneratedLedgerEntry<'a> {
     ByMatchedRule {
         ledger_entry: LedgerEntry,
@@ -94,63 +95,66 @@ impl TransactionMatcher {
         accounts: &AccountMap,
         record: &'a SourceRecord,
     ) -> Result<GeneratedLedgerEntry<'a>> {
+        trace!("Attempting to match for record '{}'.", record.description);
+
         let rule_matches: Vec<_> = self
             .rule_patterns
             .matches(&record.description)
             .into_iter()
             .collect();
 
-        match rule_matches.len() {
-            0 => {
+        if rule_matches.is_empty() {
+            trace!(
+                "No match found for record with description '{}', using fallback rule.",
+                record.description
+            );
+
+            match self
+                .fallback_rule
+                .ledger_entry_for_source_record(accounts, record)
+            {
+                Ok(ledger_entry) => Ok(GeneratedLedgerEntry::ByFallback {
+                    ledger_entry,
+                    source_record: record,
+                }),
+                Err(e) => Err(e),
+            }
+        } else {
+            let rule_index = rule_matches[0];
+            let rule: &TransactionRule = &self.transaction_rules[rule_index];
+
+            if rule_matches.len() > 1 {
                 trace!(
-                    "No match found for record with description '{}', using fallback rule.",
+                    "Multiple matches found for record: '{}', defaulting to first match.",
                     record.description
                 );
 
-                match self
-                    .fallback_rule
-                    .ledger_entry_for_source_record(accounts, record)
-                {
-                    Ok(ledger_entry) => Ok(GeneratedLedgerEntry::ByFallback {
-                        ledger_entry,
-                        source_record: record,
-                    }),
-                    Err(e) => Err(e),
-                }
-            }
-            1 => {
-                let rule_index = rule_matches[0];
-                let rule: &TransactionRule = &self.transaction_rules[rule_index];
-                trace!(
-                    "Rule named '{}' matched for record with description '{}' by pattern '{}'",
-                    rule.name,
-                    record.description,
-                    rule.pattern_string
-                );
-
-                match rule.ledger_entry_for_source_record(accounts, record) {
-                    Ok(ledger_entry) => Ok(GeneratedLedgerEntry::ByMatchedRule {
-                        ledger_entry,
-                        source_record: record,
-                    }),
-                    Err(e) => Err(e),
-                }
-            }
-            _ => {
-                let mut error_str: String = String::from("Found multiple matches: ");
                 for rule_index in rule_matches {
-                    error_str.push_str(
-                        format!(", {}", self.transaction_rules[rule_index].name).as_str(),
-                    );
+                    trace!("- '{}'\n", self.transaction_rules[rule_index].name.clone());
                 }
-                Err(eyre!(error_str))
+            }
+
+            trace!(
+                "Rule named '{}' matched for record with description '{}' by pattern '{}'",
+                rule.name,
+                record.description,
+                rule.pattern_string
+            );
+
+            match rule.ledger_entry_for_source_record(accounts, record) {
+                Ok(ledger_entry) => Ok(GeneratedLedgerEntry::ByMatchedRule {
+                    ledger_entry,
+                    source_record: record,
+                }),
+                Err(e) => Err(e),
             }
         }
     }
 }
 
-static SOURCE_COMMENT: &str = "SOURCE";
+static MATCHING_RULE_COMMENT: &str = "MATCHING RULE";
 static NEEDS_FINALIZED_COMMENT: &str = "NEEDS FINALIZED";
+static SOURCE_COMMENT: &str = "SOURCE";
 
 impl TransactionRule {
     pub fn ledger_entry_for_source_record(
@@ -175,6 +179,8 @@ impl TransactionRule {
 
         // Add the source record description as a comment:
         entry_builder.add_comment(format!("{}: {}", SOURCE_COMMENT, record.description));
+        // Add matching rule name as a comment:
+        entry_builder.add_comment(format!("{}: {}", MATCHING_RULE_COMMENT, self.name));
 
         if self.needs_finalized {
             entry_builder.add_comment(NEEDS_FINALIZED_COMMENT.to_string());
