@@ -1,26 +1,20 @@
-#!/usr/bin/env python3
-
-import csv
-import os.path
 import re
-import sys
+from pathlib import Path
 
-from clean import COLUMN_NAMES, write_output_file
+from datacleanup.clean.common import write_output_file
 
 
-def load_input(input_filename):
-    with open(input_filename) as f:
+def load_input(input_file_path: Path) -> list[str]:
+    with input_file_path.open() as f:
         content = [line.strip() for line in f]
 
     return content
 
 
-TRANSACTION_FIELDS_RE = re.compile(
-    r"^(?P<month>\d{2})\/(?P<day>\d{2})[ ,](?P<description>.*),(?P<amount>[^,]+)$"
-)
+TRANSACTION_FIELDS_RE = re.compile(r"^(?P<month>\d{2})\/(?P<day>\d{2})[ ,](?P<description>.*),(?P<amount>[^,]+)$")
 
 
-def transaction_fields(line: str, year: str, is_jan: bool):
+def transaction_fields(line: str, year: str, *, is_jan: bool) -> dict[str, str]:
     month = line[0:2]
 
     if is_jan:
@@ -28,7 +22,7 @@ def transaction_fields(line: str, year: str, is_jan: bool):
 
     day = line[3:5]
     end = line.index('"', 7) + 1 if line[6] == '"' else line.index(",", 7)
-    desc_start = 6 if line[5] in [',', ' ', '"'] else 5
+    desc_start = 6 if line[5] in [",", " ", '"'] else 5
 
     description = f"{line[desc_start:end]}"
     amount = line[end + 1 :].replace('"', "").replace(",", "")
@@ -39,7 +33,8 @@ def transaction_fields(line: str, year: str, is_jan: bool):
         "amount": amount,
     }
 
-def cleanup_commas(line: str):
+
+def cleanup_commas(line: str) -> str:
     return line.replace(",,", ",")
 
 
@@ -63,7 +58,7 @@ def is_transaction_line(line: str):
 
 
 def check_lines_contains_string(search, log, lines):
-    if any([search in line for line in lines]):
+    if any(search in line for line in lines):
         print(f"Search '{search}' found at step: '{log}'")
 
         for line in lines:
@@ -71,9 +66,9 @@ def check_lines_contains_string(search, log, lines):
                 print(f"Line: '{line}'")
 
 
-def main(input_filename, output_filename, year, is_jan):
+def do_clean(input_file_path: Path, output_file_path: Path, year: str, *, is_jan: bool = False):
     # Load full input
-    input_content = load_input(input_filename)
+    input_content = load_input(input_file_path)
 
     # First clean up lines so they match:
     input_content = [fix_quoting(line) for line in input_content]
@@ -85,31 +80,7 @@ def main(input_filename, output_filename, year, is_jan):
     transaction_lines = [cleanup_commas(line) for line in transaction_lines]
 
     # Grab fields
-    transactions_by_fields = [
-        transaction_fields(line, year, is_jan) for line in transaction_lines
-    ]
+    transactions_by_fields = [transaction_fields(line, year, is_jan=is_jan) for line in transaction_lines]
 
     # Write CSV
-    write_output_file(transactions_by_fields, output_filename)
-
-    return 0
-
-
-if __name__ == "__main__":
-    args = sys.argv[1:]
-
-    if len(args) < 3:
-        print("Usage: \n")
-        print(f"\t{os.path.basename(__file__)} <input_file> <output_file> <year> [--january-statement]")
-        sys.exit(1)
-
-    # We handle January statements different as they straddle the year
-    is_jan = len(args) > 3 and args[3] == "--january-statement"
-
-    try:
-        result = main(args[0], args[1], args[2], is_jan)
-    except Exception as e:
-        result = 1
-        print(f"{str(e)}", file=sys.stderr)
-
-    sys.exit(result)
+    write_output_file(transactions_by_fields, output_file_path)

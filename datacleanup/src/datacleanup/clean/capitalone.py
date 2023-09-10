@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Transform transactions downloaded from Capital One 360 Account in CSV format.
 
@@ -13,12 +11,9 @@ CSV headers:
 """
 
 import csv
-import os.path
-import re
-import sys
-from pprint import pprint
+from pathlib import Path
 
-from clean import COLUMN_NAMES, write_output_file
+from datacleanup.clean.common import COLUMN_NAMES, write_output_file
 
 
 def date_clean(input_value):
@@ -49,49 +44,26 @@ COLUMN_MAP = {
     "amount": "Transaction Amount",
 }
 
-COLUMN_CLEAN_FUNCTIONS = {
-    column: globals()[f"{column}_clean"] for column in COLUMN_NAMES
-}
+COLUMN_CLEAN_FUNCTIONS = {column: globals()[f"{column}_clean"] for column in COLUMN_NAMES}
 
 
-def load_input(input_filename):
-    with open(input_filename) as f:
+def load_input(input_file_path: Path) -> list[dict[str, str]]:
+    with input_file_path.open() as f:
         reader = csv.DictReader(f)
-
-        return [row for row in reader]
+        return list(reader)
 
 
 def transform_row(row):
-    return {
-        column: COLUMN_CLEAN_FUNCTIONS[column](row[COLUMN_MAP[column]])
-        for column in COLUMN_NAMES
-    }
+    return {column: COLUMN_CLEAN_FUNCTIONS[column](row[COLUMN_MAP[column]]) for column in COLUMN_NAMES}
 
 
 def transform_rows(input_content):
     return [transform_row(row) for row in input_content]
 
 
-def main(input_filename, output_filename):
-    input_content = load_input(input_filename)
+def do_clean(input_file_path: Path, output_file_path: Path):
+    input_content = load_input(input_file_path)
 
     transformed_content = transform_rows(input_content)
 
-    write_output_file(transformed_content, output_filename)
-
-    return 0
-
-
-if __name__ == "__main__":
-    if len(sys.argv[1:]) < 2:
-        print("Usage: \n")
-        print(f"\t{os.path.basename(__file__)} <input_file> <output_file>")
-        sys.exit(1)
-
-    try:
-        result = main(sys.argv[1], sys.argv[2])
-    except Exception as e:
-        result = 1
-        print(f"{str(e)}", file=sys.stderr)
-
-    sys.exit(result)
+    write_output_file(transformed_content, output_file_path)
