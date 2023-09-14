@@ -8,6 +8,7 @@ use financial_importer::{
     ledger_entry::{write_ledger_entries_file, LedgerEntry},
 };
 use log::trace;
+use std::iter::Map;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
@@ -165,7 +166,8 @@ fn process_csv(
     if errors.is_empty() {
         Ok(())
     } else {
-        errors.into_iter().map(Result::unwrap_err).fold(
+        Map::fold(
+            errors.into_iter().map(Result::unwrap_err),
             Err(eyre!("One or more errors were reported!")),
             |report, e| report.section(e),
         )
