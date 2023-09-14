@@ -39,7 +39,6 @@ pub fn load_source_records(input_path: &Path) -> Result<Vec<SourceRecord>> {
     let mut reader = csv::Reader::from_path(input_path)?;
     let (rows, errors): (Vec<_>, Vec<_>) = reader
         .deserialize::<SourceRecord>()
-        .into_iter()
         .partition(Result::is_ok);
 
     let rows: Vec<SourceRecord> = rows.into_iter().map(Result::unwrap).collect();

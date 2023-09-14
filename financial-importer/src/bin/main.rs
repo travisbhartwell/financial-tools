@@ -118,7 +118,7 @@ fn process_csv(
     let (matched_entries, unmatched_entries): (Vec<_>, Vec<_>) = entries
         .into_iter()
         .map(Result::unwrap)
-        .partition(GeneratedLedgerEntry::from_matched_rule);
+        .partition(GeneratedLedgerEntry::is_from_matched_rule);
 
     let (unmatched_entries, mut unmatched_records): (Vec<_>, Vec<_>) = unmatched_entries
         .into_iter()
@@ -198,7 +198,7 @@ fn initialize_logging(app: &App) {
         if let Ok(level) = std::env::var(LOG_ENV_VAR) {
             eprintln!("{} already set to '{}', leaving.", LOG_ENV_VAR, level);
         } else {
-            std::env::set_var(LOG_ENV_VAR, &VALIDATION_LOG_LEVEL);
+            std::env::set_var(LOG_ENV_VAR, VALIDATION_LOG_LEVEL);
         }
     }
 

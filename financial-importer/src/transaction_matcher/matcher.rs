@@ -64,7 +64,7 @@ impl<'a> GeneratedLedgerEntry<'a> {
     }
 
     #[must_use]
-    pub fn from_matched_rule(&self) -> bool {
+    pub fn is_from_matched_rule(&self) -> bool {
         matches!(*self, GeneratedLedgerEntry::ByMatchedRule { .. })
     }
 }
