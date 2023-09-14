@@ -37,11 +37,13 @@ path = "src/datacleanup/__about__.py"
 [tool.hatch.envs.default]
 dependencies = [
   "coverage[toml]>=6.5",
+  "mypy>=1.0.0",
   "pytest",
 ]
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
+typing = "mypy --install-types --non-interactive {args:src/datacleanup tests}"
 cov-report = [
   "- coverage combine",
   "coverage report",
@@ -49,6 +51,10 @@ cov-report = [
 cov = [
   "test-cov",
   "cov-report",
+]
+all = [
+  "cov",
+  "typing"
 ]
 
 [[tool.hatch.envs.all.matrix]]
@@ -58,11 +64,9 @@ python = ["3.11"]
 detached = true
 dependencies = [
   "black>=23.1.0",
-  "mypy>=1.0.0",
   "ruff>=0.0.243",
 ]
 [tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/datacleanup tests}"
 style = [
   "ruff {args:.}",
   "black --check --diff {args:.}",
@@ -71,10 +75,6 @@ fmt = [
   "black {args:.}",
   "ruff --fix {args:.}",
   "style",
-]
-all = [
-  "style",
-  "typing",
 ]
 
 [tool.black]
