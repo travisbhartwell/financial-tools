@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+project.load_task_library "shell"
+
+# shellcheck disable=SC2154
+readonly DIST_DIR="${MYPROJECT_BASE_DIR}/dist"
+
+mycmd.defer_at_startup mycmd.init_bin hatch
+
+function build() {
+    mycmd.bin_execute hatch build
+}
+project.register_task build
+
+function lint() {
+    mycmd.bin_execute hatch run lint:style
+}
+project.register_task lint
+
+function test() {
+    mycmd.bin_execute hatch run default:cov
+}
+project.register_task test
+
+function test-all() {
+    mycmd.bin_execute hatch run default:all
+}
+project.register_task test-all
+
+function lint-typing() {
+    mycmd.bin_execute hatch run default:typing
+}
+project.register_task lint-typing
+
+function fmt() {
+    mycmd.bin_execute hatch run lint:fmt
+}
+project.register_task fmt
+
+mycmd.defer_at_startup mycmd.init_bin pipx
+function install() {
+    local -r wheel="${DIST_DIR}/datacleanup-0.0.1-py3-none-any.whl"
+
+    if [[ ! -e "${wheel}" ]]; then
+        mycmd.log "Missing wheel ${wheel}."
+        return 1
+    fi
+
+    if command -v datacleanup &>/dev/null; then
+        mycmd.bin_execute pipx uninstall datacleanup
+    fi
+
+    mycmd.bin_execute pipx install --include-deps "${wheel}"
+}
+project.register_task install
+
+function all() {
+    project.execute_tasks lint test-all build install
+}
+project.register_task all
