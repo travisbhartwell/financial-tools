@@ -62,3 +62,4 @@ function all() {
     project.execute_tasks lint test-all build install
 }
 project.register_task all
+project.register_default_task all

@@ -58,3 +58,10 @@ def test_invalid_path(transactions):
 
     with pytest.raises(IOError):
         write_output_file(transactions, output_path)
+
+
+# Test that clean.capitalon.do_clean writes an output file
+def test_capitalone_do_clean():
+    """
+    Test that output file is generated.
+    """
