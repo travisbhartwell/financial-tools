@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+project.load_task_library "shell"
+
+project.register_fileset SHELL_FILES
+# shellcheck disable=SC2154
+project.add_files_to_fileset SHELL_FILES "${MYPROJECT_PROJECT_FILE}"
+
+project.register_task_with_fileset list-shell-files project.list-files SHELL_FILES
+project.register_task_with_fileset format-shell project:shell.format SHELL_FILES
+project.register_task_with_fileset lint-shell project:shell.lint SHELL_FILES
+
+mycmd.defer_at_startup mycmd.init_bin cargo
+
+# ----------------------------------------
+# Build Commands
+function build() {
+    mycmd.bin_execute cargo build
+}
+project.register_task build
+
+function build-release() {
+    mycmd.bin_execute cargo build --release
+}
+project.register_task build-release
+
+# ----------------------------------------
+# Update Commands
+
+# From cargo-edit, updates Cargo.toml to the latest stable versions
+function upgrade() {
+    mycmd.bin_execute cargo upgrade
+}
+project.regiter_task upgrade
+
+function outdated() {
+    mycmd.bin_execute cargo outdated
+}
+project.register_task outdated
+
+# Update will update the Cargo.lock file according to the constraints in Cargo.toml
+function update() {
+    mycmd.bin_execute cargo update
+}
+project.register_task update
+
+# ----------------------------------------
+# Install Command
+function install() {
+    # --path . means install in $CARGO_HOME/bin, which will be $HOME/.cargo/bin
+    # --locked means use Cargo.lock
+    mycmd.bin_execute cargo install --path . --locked
+}
+project.register_task install
+
+# ----------------------------------------
+# All Command
+function all() {
+    project.execute_tasks build-release install
+}
+project.register_task all
+project.register_default_task all
