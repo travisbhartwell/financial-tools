@@ -16,7 +16,7 @@ from pathlib import Path
 from datacleanup.clean.common import COLUMN_NAMES, write_output_file
 
 
-def date_clean(input_value):
+def date_clean(input_value, _row):
     month = input_value[0:2]
     day = input_value[3:5]
     year = input_value[6:8]
@@ -24,18 +24,20 @@ def date_clean(input_value):
     return f"20{year}-{month}-{day}"
 
 
-def description_clean(input_value):
+def description_clean(input_value, _row):
     return f'"{input_value}"'
 
 
-def amount_clean(input_value):
-    # The rules for the financial importer are designed first around
-    # a credit card statement, where the amount of a transaction is
-    # subtracted to show what we owe. This is the opposite.
-    if input_value[0] == "-":
-        return input_value[1:]
-    else:
+TRANSACTION_TYPE_FIELD = "Transaction Type"
+DEBIT = "Debit"
+CREDIT = "Credit"
+
+
+def amount_clean(input_value, row):
+    if row[TRANSACTION_TYPE_FIELD] == CREDIT:
         return f"-{input_value}"
+    else:
+        return input_value
 
 
 COLUMN_MAP = {
@@ -54,7 +56,7 @@ def load_input(input_file_path: Path) -> list[dict[str, str]]:
 
 
 def transform_row(row):
-    return {column: COLUMN_CLEAN_FUNCTIONS[column](row[COLUMN_MAP[column]]) for column in COLUMN_NAMES}
+    return {column: COLUMN_CLEAN_FUNCTIONS[column](row[COLUMN_MAP[column]], row) for column in COLUMN_NAMES}
 
 
 def transform_rows(input_content):

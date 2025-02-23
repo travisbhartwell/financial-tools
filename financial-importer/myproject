@@ -35,7 +35,7 @@ project.register_task build-release
 function upgrade() {
     mycmd.bin_execute cargo upgrade
 }
-project.regiter_task upgrade
+project.register_task upgrade
 
 function outdated() {
     mycmd.bin_execute cargo outdated
