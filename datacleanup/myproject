@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env -S mycmd project run
 # -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
 # shellcheck shell=bash
 
@@ -6,60 +6,47 @@ set -o nounset -o errexit -o errtrace -o pipefail
 
 project.load_task_library "shell"
 
+#----------------------------------------
+# Project File Sets
+
+#----------------------------------------
+# Just myproject
+project.register_fileset MYPROJECT_ONLY
 # shellcheck disable=SC2154
-readonly DIST_DIR="${MYPROJECT_BASE_DIR}/dist"
+project.add_files_to_fileset MYPROJECT_ONLY "${MYPROJECT_PROJECT_FILE}"
 
-mycmd.defer_at_startup mycmd.init_bin hatch
+project.register_task_with_fileset list-myproject-only project.list-files MYPROJECT_ONLY
+project.register_task_with_fileset format-myproject-only project:shell.format MYPROJECT_ONLY
+project.register_task_with_fileset lint-myproject-only project:shell.lint MYPROJECT_ONLY
 
-function build() {
-    mycmd.bin_execute hatch build
-}
-project.register_task build
+#----------------------------------------
+# Python Source Files
 
-function lint() {
-    mycmd.bin_execute hatch run lint:style
-}
-project.register_task lint
+# shellcheck disable=SC2154
+readonly DATA_CLEANUP_SCRIPT="${MYPROJECT_BASE_DIR}/src/datacleanup"
 
-function test() {
-    mycmd.bin_execute hatch run default:cov
-}
-project.register_task test
+project.register_fileset PYTHON_FILES
+project.add_files_to_fileset PYTHON_FILES "${DATA_CLEANUP_SCRIPT}"
+project.register_task_with_fileset list-python-files project.list-files PYTHON_FILES
 
-function test-all() {
-    mycmd.bin_execute hatch run default:all
-}
-project.register_task test-all
+# TODO: Lint
 
-function lint-typing() {
-    mycmd.bin_execute hatch run default:typing
-}
-project.register_task lint-typing
+# TODO: Format
 
-function fmt() {
-    mycmd.bin_execute hatch run lint:fmt
-}
-project.register_task fmt
+# TODO: Create Symlink to $HOME/.local/bin
+function symlink-script-to-home-local() {
+    local -r local_bin="${HOME}/.local/bin"
+    local -r target_file="${local_bin}/datacleanup"
 
-mycmd.defer_at_startup mycmd.init_bin pipx
-function install() {
-    local -r wheel="${DIST_DIR}/datacleanup-0.0.1-py3-none-any.whl"
+    if [[ ! -e "${target_file}" ]]; then
+        project.output_only_if_not_quiet "Script file symlink to '${target_file}', missing, creating now."
 
-    if [[ ! -e "${wheel}" ]]; then
-        mycmd.log "Missing wheel ${wheel}."
-        return 1
+        if [[ ! -d "${local_bin}" ]]; then
+            project.output_only_if_not_quiet "Creating missing configuration directory '${config_dir}'."
+            mkdir -p "${local_bin}"
+        fi
+
+        ln -sf "${DATA_CLEANUP_SCRIPT}" "${target_file}"
     fi
-
-    if command -v datacleanup &>/dev/null; then
-        mycmd.bin_execute pipx uninstall datacleanup
-    fi
-
-    mycmd.bin_execute pipx install --include-deps "${wheel}"
 }
-project.register_task install
-
-function all() {
-    project.execute_tasks lint test-all build install
-}
-project.register_task all
-project.register_default_task all
+project.register_task symlink-script-to-home-local

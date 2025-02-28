@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+
+from collections.abc import Callable
+from csv import DictReader, DictWriter
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from functools import partial
+from pathlib import Path
+import sys
+from typing import Any
+
+DATE_COLUMN = "date"
+DESCRIPTION_COLUMN = "description"
+AMOUNT_COLUMN = "amount"
+
+ROW_TRANSFORMERS = "row_transformers"
+COLUMNS = "columns"
+
+
+@dataclass(order=True, frozen=True)
+class TransactionLine:
+    transaction_date: date
+    description: str
+    amount: Decimal
+
+    def csv_dict(self) -> dict[str, str]:
+        return {
+            DATE_COLUMN: str(self.transaction_date),
+            DESCRIPTION_COLUMN: self.description,
+            AMOUNT_COLUMN: str(self.amount.quantize(Decimal("1.00"))),
+        }
+
+
+def month_day_four_year_with_slashes_to_date(
+    date_column: str, row: dict[str, Any]
+) -> dict[str, Any]:
+    month, day, year = row[date_column].split("/")
+    row[date_column] = date(int(year), int(month), int(day))
+    return row
+
+
+def month_day_two_year_with_slashes_to_date(
+    date_column: str, row: dict[str, Any]
+) -> dict[str, Any]:
+    month, day, year = row[date_column].split("/")
+    year = f"20{year}"
+    row[date_column] = date(int(year), int(month), int(day))
+    return row
+
+
+def negate_amount_string_to_decimal(
+    amount_column: str, row: dict[str, Any]
+) -> dict[str, Any]:
+    amount_str = row[amount_column]
+    amount = Decimal(amount_str)
+    row[amount_column] = -amount
+    return row
+
+
+def negate_credit_amount_string_to_decimal(
+    amount_column: str, type_column: str, row: dict[str, Any]
+) -> dict[str, Any]:
+    amount_str = row[amount_column]
+    amount = Decimal(amount_str)
+
+    if row[type_column] == "Credit":
+        row[amount_column] = -amount
+    else:
+        row[amount_column] = amount
+
+    return row
+
+
+# Capital One Constants
+CAPITAL_ONE_TRANSACTION_DATE_COLUMN = "Transaction Date"
+CAPITAL_ONE_TRANSACTION_DESCRIPTION_COLUMN = "Transaction Description"
+CAPITAL_ONE_TRANSACTION_AMOUNT_COLUMN = "Transaction Amount"
+CAPITAL_ONE_TRANSACTION_TYPE_COLUMN = "Transaction Type"
+
+# Chase Visa Constants
+CHASE_VISA_TRANSACTION_DATE_COLUMN = "Transaction Date"
+CHASE_VISA_DESCRIPTION_COLUMN = "Description"
+CHASE_VISA_AMOUNT_COLUMN = "Amount"
+
+file_types = {
+    "capital-one": {
+        "row_transformers": [
+            partial(
+                month_day_two_year_with_slashes_to_date,
+                CAPITAL_ONE_TRANSACTION_DATE_COLUMN,
+            ),
+            partial(
+                negate_credit_amount_string_to_decimal,
+                CAPITAL_ONE_TRANSACTION_AMOUNT_COLUMN,
+                CAPITAL_ONE_TRANSACTION_TYPE_COLUMN,
+            ),
+        ],
+        "columns": {
+            DATE_COLUMN: CAPITAL_ONE_TRANSACTION_DATE_COLUMN,
+            DESCRIPTION_COLUMN: CAPITAL_ONE_TRANSACTION_DESCRIPTION_COLUMN,
+            AMOUNT_COLUMN: CAPITAL_ONE_TRANSACTION_AMOUNT_COLUMN,
+        },
+    },
+    "chase-visa": {
+        "row_transformers": [
+            partial(
+                month_day_four_year_with_slashes_to_date,
+                CHASE_VISA_TRANSACTION_DATE_COLUMN,
+            ),
+            partial(negate_amount_string_to_decimal, CHASE_VISA_AMOUNT_COLUMN),
+        ],
+        "columns": {
+            DATE_COLUMN: CHASE_VISA_TRANSACTION_DATE_COLUMN,
+            DESCRIPTION_COLUMN: CHASE_VISA_DESCRIPTION_COLUMN,
+            AMOUNT_COLUMN: CHASE_VISA_AMOUNT_COLUMN,
+        },
+    },
+}
+
+
+def load_input_file(input_file: Path) -> list[dict[str, str]]:
+    with input_file.open() as f:
+        reader = DictReader(f)
+        return list(reader)
+
+
+def transform_rows(
+    transformers: list[Callable[[dict[str, Any]], dict[str, Any]]],
+    rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    for row in rows:
+        for transformer in transformers:
+            row = transformer(row)
+    return rows
+
+
+def row_to_transaction_line(
+    column_map: dict[str, str], row: dict[str, Any]
+) -> TransactionLine:
+    transaction_date = row[column_map[DATE_COLUMN]]
+    description = row[column_map[DESCRIPTION_COLUMN]]
+    amount = row[column_map[AMOUNT_COLUMN]]
+    return TransactionLine(transaction_date, description, amount)
+
+
+def transformed_rows_to_transaction_lines(
+    column_map: dict[str, str], rows: list[dict[str, Any]]
+) -> list[TransactionLine]:
+    line_creator = partial(row_to_transaction_line, column_map)
+    transaction_lines = [line_creator(row) for row in rows]
+    return sorted(transaction_lines)
+
+
+def write_transaction_lines(
+    transaction_lines: list[TransactionLine], output_file: Path
+) -> None:
+    with output_file.open("w") as f:
+        writer = DictWriter(
+            f, fieldnames=[DATE_COLUMN, DESCRIPTION_COLUMN, AMOUNT_COLUMN]
+        )
+
+        writer.writeheader()
+        for line in transaction_lines:
+            writer.writerow(line.csv_dict())
+
+
+def main():
+    if len(sys.argv) < 4:
+        print(
+            f"Usage: {sys.argv[0]} <file-type> <input-file> <output-file>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    file_type = sys.argv[1]
+
+    if not file_type in file_types:
+        print(f"File type '{file_type}' is not supported.", file=sys.stderr)
+        sys.exit(1)
+
+    transformation = file_types[file_type]
+
+    input_file = Path(sys.argv[2])
+    output_file = Path(sys.argv[3])
+
+    if not input_file.exists():
+        print(f"File '{input_file}' does not exist.")
+        sys.exit(1)
+
+    source_rows = load_input_file(input_file)
+    transformed_rows = transform_rows(transformation[ROW_TRANSFORMERS], source_rows)
+    transaction_lines = transformed_rows_to_transaction_lines(
+        transformation[COLUMNS], transformed_rows
+    )
+    write_transaction_lines(transaction_lines, output_file)
+
+
+if __name__ == "__main__":
+    main()
