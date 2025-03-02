@@ -200,7 +200,7 @@ fn initialize_logging(app: &App) {
         if let Ok(level) = std::env::var(LOG_ENV_VAR) {
             eprintln!("{} already set to '{}', leaving.", LOG_ENV_VAR, level);
         } else {
-            std::env::set_var(LOG_ENV_VAR, VALIDATION_LOG_LEVEL);
+            unsafe { std::env::set_var(LOG_ENV_VAR, VALIDATION_LOG_LEVEL) };
         }
     }
 

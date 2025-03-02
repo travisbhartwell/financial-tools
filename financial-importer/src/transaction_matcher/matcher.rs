@@ -163,14 +163,14 @@ impl TransactionRule {
         record: &SourceRecord,
     ) -> Result<LedgerEntry> {
         let payee = if self.payee_is_template {
-            if let Some(pattern) = &self.pattern {
+            match &self.pattern { Some(pattern) => {
                 let mut payee = String::new();
                 let templates = pattern.captures(&record.description).unwrap();
                 templates.expand(&self.payee, &mut payee);
                 case::title_case(payee.as_str())
-            } else {
+            } _ => {
                 panic!("Regex missing for template pattern!")
-            }
+            }}
         } else {
             self.payee.clone()
         };
