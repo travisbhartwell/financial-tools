@@ -83,9 +83,9 @@ CHASE_VISA_TRANSACTION_DATE_COLUMN = "Transaction Date"
 CHASE_VISA_DESCRIPTION_COLUMN = "Description"
 CHASE_VISA_AMOUNT_COLUMN = "Amount"
 
-file_types = {
+FILE_TYPES = {
     "capital-one": {
-        "row_transformers": [
+        ROW_TRANSFORMERS: [
             partial(
                 month_day_two_year_with_slashes_to_date,
                 CAPITAL_ONE_TRANSACTION_DATE_COLUMN,
@@ -96,21 +96,21 @@ file_types = {
                 CAPITAL_ONE_TRANSACTION_TYPE_COLUMN,
             ),
         ],
-        "columns": {
+        COLUMNS: {
             DATE_COLUMN: CAPITAL_ONE_TRANSACTION_DATE_COLUMN,
             DESCRIPTION_COLUMN: CAPITAL_ONE_TRANSACTION_DESCRIPTION_COLUMN,
             AMOUNT_COLUMN: CAPITAL_ONE_TRANSACTION_AMOUNT_COLUMN,
         },
     },
     "chase-visa": {
-        "row_transformers": [
+        ROW_TRANSFORMERS: [
             partial(
                 month_day_four_year_with_slashes_to_date,
                 CHASE_VISA_TRANSACTION_DATE_COLUMN,
             ),
             partial(negate_amount_string_to_decimal, CHASE_VISA_AMOUNT_COLUMN),
         ],
-        "columns": {
+        COLUMNS: {
             DATE_COLUMN: CHASE_VISA_TRANSACTION_DATE_COLUMN,
             DESCRIPTION_COLUMN: CHASE_VISA_DESCRIPTION_COLUMN,
             AMOUNT_COLUMN: CHASE_VISA_AMOUNT_COLUMN,
@@ -165,28 +165,19 @@ def write_transaction_lines(
             writer.writerow(line.csv_dict())
 
 
-def main():
-    if len(sys.argv) < 4:
-        print(
-            f"Usage: {sys.argv[0]} <file-type> <input-file> <output-file>",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    file_type = sys.argv[1]
-
-    if not file_type in file_types:
+def main(file_type: str, input_file_name: str, output_file_name: str) -> bool:
+    if not file_type in FILE_TYPES:
         print(f"File type '{file_type}' is not supported.", file=sys.stderr)
-        sys.exit(1)
+        return False
 
-    transformation = file_types[file_type]
+    transformation = FILE_TYPES[file_type]
 
-    input_file = Path(sys.argv[2])
-    output_file = Path(sys.argv[3])
+    input_file = Path(input_file_name)
+    output_file = Path(output_file_name)
 
     if not input_file.exists():
-        print(f"File '{input_file}' does not exist.")
-        sys.exit(1)
+        print(f"File '{input_file}' does not exist.", file=sys.stderr)
+        return False
 
     source_rows = load_input_file(input_file)
     transformed_rows = transform_rows(transformation[ROW_TRANSFORMERS], source_rows)
@@ -194,7 +185,18 @@ def main():
         transformation[COLUMNS], transformed_rows
     )
     write_transaction_lines(transaction_lines, output_file)
+    return True
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 4:
+        print(
+            f"Usage: {sys.argv[0]} <file-type> <input-file> <output-file>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    result = main(sys.argv[1], sys.argv[2], sys.argv[3])
+
+    if not result:
+        sys.exit(1)
