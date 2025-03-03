@@ -1,57 +1,51 @@
 #!/usr/bin/env python3
 
-from collections.abc import Callable
 from csv import DictReader, DictWriter
 from dataclasses import dataclass
-from datetime import date
+import datetime
 from decimal import Decimal
 from functools import partial
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, Protocol, TypedDict
 
 DATE_COLUMN = "date"
 DESCRIPTION_COLUMN = "description"
 AMOUNT_COLUMN = "amount"
 
-ROW_TRANSFORMERS = "row_transformers"
-COLUMNS = "columns"
-
 
 @dataclass(order=True, frozen=True)
 class TransactionLine:
-    transaction_date: date
+    date: datetime.date
     description: str
     amount: Decimal
 
     def csv_dict(self) -> dict[str, str]:
         return {
-            DATE_COLUMN: str(self.transaction_date),
+            DATE_COLUMN: str(self.date),
             DESCRIPTION_COLUMN: self.description,
             AMOUNT_COLUMN: str(self.amount.quantize(Decimal("1.00"))),
         }
 
 
-def month_day_four_year_with_slashes_to_date(
-    date_column: str, row: dict[str, Any]
-) -> dict[str, Any]:
+type RawRow = dict[str, str]
+type Row = dict[str, Any]
+
+
+def month_day_four_year_with_slashes_to_date(date_column: str, row: Row) -> Row:
     month, day, year = row[date_column].split("/")
-    row[date_column] = date(int(year), int(month), int(day))
+    row[date_column] = datetime.date(int(year), int(month), int(day))
     return row
 
 
-def month_day_two_year_with_slashes_to_date(
-    date_column: str, row: dict[str, Any]
-) -> dict[str, Any]:
+def month_day_two_year_with_slashes_to_date(date_column: str, row: Row) -> Row:
     month, day, year = row[date_column].split("/")
     year = f"20{year}"
-    row[date_column] = date(int(year), int(month), int(day))
+    row[date_column] = datetime.date(int(year), int(month), int(day))
     return row
 
 
-def negate_amount_string_to_decimal(
-    amount_column: str, row: dict[str, Any]
-) -> dict[str, Any]:
+def negate_amount_string_to_decimal(amount_column: str, row: Row) -> Row:
     amount_str = row[amount_column]
     amount = Decimal(amount_str)
     row[amount_column] = -amount
@@ -59,8 +53,8 @@ def negate_amount_string_to_decimal(
 
 
 def negate_credit_amount_string_to_decimal(
-    amount_column: str, type_column: str, row: dict[str, Any]
-) -> dict[str, Any]:
+    amount_column: str, type_column: str, row: Row
+) -> Row:
     amount_str = row[amount_column]
     amount = Decimal(amount_str)
 
@@ -83,7 +77,27 @@ CHASE_VISA_TRANSACTION_DATE_COLUMN = "Transaction Date"
 CHASE_VISA_DESCRIPTION_COLUMN = "Description"
 CHASE_VISA_AMOUNT_COLUMN = "Amount"
 
-FILE_TYPES = {
+
+ROW_TRANSFORMERS = "row_transformers"
+COLUMNS = "columns"
+
+
+class Transformer(Protocol):
+    def __call__(self, row: Row) -> Row: ...
+
+
+class ColumnMapping(TypedDict):
+    date: str
+    description: str
+    amount: str
+
+
+class FileType(TypedDict):
+    row_transformers: list[Transformer]
+    columns: ColumnMapping
+
+
+FILE_TYPES: dict[str, FileType] = {
     "capital-one": {
         ROW_TRANSFORMERS: [
             partial(
@@ -119,25 +133,23 @@ FILE_TYPES = {
 }
 
 
-def load_input_file(input_file: Path) -> list[dict[str, str]]:
+def load_input_file(input_file: Path) -> list[RawRow]:
     with input_file.open() as f:
         reader = DictReader(f)
         return list(reader)
 
 
 def transform_rows(
-    transformers: list[Callable[[dict[str, Any]], dict[str, Any]]],
-    rows: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+    transformers: list[Transformer],
+    rows: list[Row],
+) -> list[Row]:
     for row in rows:
         for transformer in transformers:
             row = transformer(row)
     return rows
 
 
-def row_to_transaction_line(
-    column_map: dict[str, str], row: dict[str, Any]
-) -> TransactionLine:
+def row_to_transaction_line(column_map: ColumnMapping, row: Row) -> TransactionLine:
     transaction_date = row[column_map[DATE_COLUMN]]
     description = row[column_map[DESCRIPTION_COLUMN]]
     amount = row[column_map[AMOUNT_COLUMN]]
@@ -145,7 +157,7 @@ def row_to_transaction_line(
 
 
 def transformed_rows_to_transaction_lines(
-    column_map: dict[str, str], rows: list[dict[str, Any]]
+    column_map: ColumnMapping, rows: list[Row]
 ) -> list[TransactionLine]:
     line_creator = partial(row_to_transaction_line, column_map)
     transaction_lines = [line_creator(row) for row in rows]
@@ -170,7 +182,7 @@ def main(file_type: str, input_file_name: str, output_file_name: str) -> bool:
         print(f"File type '{file_type}' is not supported.", file=sys.stderr)
         return False
 
-    transformation = FILE_TYPES[file_type]
+    transformation: FileType = FILE_TYPES[file_type]
 
     input_file = Path(input_file_name)
     output_file = Path(output_file_name)
