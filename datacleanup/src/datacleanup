@@ -178,7 +178,7 @@ def write_transaction_lines(
 
 
 def main(file_type: str, input_file_name: str, output_file_name: str) -> bool:
-    if not file_type in FILE_TYPES:
+    if file_type not in FILE_TYPES:
         print(f"File type '{file_type}' is not supported.", file=sys.stderr)
         return False
 

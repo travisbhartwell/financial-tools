@@ -1,0 +1,82 @@
+#!/usr/bin/env -S mycmd myproject run
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+myproject.register_task_definition_file_description "Data Cleanup are scripts for cleaning CSVs downloaded from financial institutions"
+
+# --------------------------------------------------------------------------------------------------
+# Project-Wide Variables
+
+mycmd.trace "The following variables set by MyProject are used in the main task definition file:"
+# shellcheck disable=SC2154
+mycmd.trace "- MYPROJECT_ROOT_DIRECTORY:            ${MYPROJECT_ROOT_DIRECTORY}"
+# shellcheck disable=SC2154
+mycmd.trace "- MYPROJECT_TASK_DEFINITION_DIRECTORY: ${MYPROJECT_TASK_DEFINITION_DIRECTORY}"
+
+readonly SRC_DIRECTORY="${MYPROJECT_ROOT_DIRECTORY}/src"
+readonly DATA_CLEANUP_SCRIPT="${SRC_DIRECTORY}/datacleanup"
+
+mycmd.trace "Set the following variables:"
+mycmd.trace "- SRC_DIRECTORY:       ${SRC_DIRECTORY}"
+mycmd.trace "- DATA_CLEANUP_SCRIPT: ${DATA_CLEANUP_SCRIPT}"
+
+# --------------------------------------------------------------------------------------------------
+# Project File Sets
+
+# All Files
+myproject.register_fileset ALL_FILES
+myproject.find_and_add_files_to_fileset ALL_FILES "${MYPROJECT_ROOT_DIRECTORY}" -type f
+
+# Task Definition Files
+myproject.register_fileset TASK_DEFINITION_FILES
+myproject.add_files_to_fileset TASK_DEFINITION_FILES "${MYPROJECT_TASK_DEFINITION_DIRECTORY}"/*
+
+# Python Files Only
+myproject.register_fileset PYTHON_FILES
+myproject.add_files_to_fileset PYTHON_FILES "${SRC_DIRECTORY}"/*
+
+# --------------------------------------------------------------------------------------------------
+# Main Tasks
+function lint_all() {
+    myproject.execute_tasks task-definition-files lint \; python lint
+}
+
+myproject.register_task lint-all lint_all
+myproject.register_task_description lint-all "Lint all project files."
+
+function format_all() {
+    myproject.execute_tasks task-definition-files format \; python format
+}
+
+myproject.register_task format-all format_all
+myproject.register_task_description format-all "Format all project files."
+
+function symlink_script_to_home_local() {
+    local -r local_bin="${HOME}/.local/bin"
+    local -r target_file="${local_bin}/datacleanup"
+
+    if [[ ! -e "${target_file}" ]]; then
+        myproject.output_only_if_not_quiet "Script file symlink to '${target_file}', missing, creating now."
+
+        if [[ ! -d "${local_bin}" ]]; then
+            myproject.output_only_if_not_quiet "Creating missing local bin directory '${local_bin}'."
+            mkdir -p "${local_bin}"
+        fi
+
+        ln -sf "${DATA_CLEANUP_SCRIPT}" "${target_file}"
+    fi
+}
+
+myproject.register_task symlink-script-to-home-local symlink_script_to_home_local
+myproject.register_task_description symlink-script-to-home-local "Symlink the datacleanup script to ${HOME}/.local/bin, if necessary."
+
+function all() {
+    myproject.execute_tasks lint-all \; format-all \; symlink-script-to-home-local
+}
+
+myproject.register_task all
+myproject.register_task_description all "Execute all build tasks: format, lint, and symlink-script-to-home-local."
+
+mycmd.trace "Finished loading the main task definition file."
