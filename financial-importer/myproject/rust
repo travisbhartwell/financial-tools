@@ -1,0 +1,88 @@
+#!/usr/bin/env -S mycmd myproject run
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+# --------------------------------------------------------------------------------------------------
+# Rust Related Tasks
+myproject.register_task_definition_file_description "Tasks related to Rust language for the Financial Importer project"
+
+mycmd.defer_at_startup mycmd.init_bin cargo
+function exec-cargo() {
+    mycmd.bin_execute cargo "${@}"
+}
+
+function format_rust() {
+    exec-cargo fmt
+}
+
+myproject.register_task format format_rust
+myproject.register_task_description format "Format the project Rust files with Cargo fmt."
+
+function check() {
+    exec-cargo check
+}
+
+myproject.register_task check check
+myproject.register_task_description check "Check the project Rust files with Cargo check."
+
+function clippy() {
+    exec-cargo clippy
+}
+
+myproject.register_task clippy
+myproject.register_task_description clippy "Check the project Rust files with Cargo clippy."
+
+function lint_rust() {
+    myproject.execute_tasks check \; clippy
+}
+
+myproject.register_task lint lint_rust
+myproject.register_task_description lint "Lint the project Rust files."
+
+function build() {
+    exec-cargo build
+}
+
+myproject.register_task build
+myproject.register_task_description build "Build the project with Cargo."
+
+function build_release() {
+    exec-cargo build --release
+}
+
+myproject.register_task build-release build_release
+myproject.register_task_description build-release "Build the project with Cargo in release mode."
+
+function upgrade() {
+    exec-cargo upgrade
+}
+
+myproject.register_task upgrade
+myproject.register_task_description upgrade "Upgrade dependency version requirements in the project Cargo.toml manifest file."
+
+function outdated() {
+    exec-cargo outdated
+}
+
+myproject.register_task outdated
+myproject.register_task_description outdated "Display outdated dependency versions for the project."
+
+function update() {
+    exec-cargo update
+}
+
+myproject.register_task update
+myproject.register_task_description update "Update the project Cargo.lock file according to constraints in Cargo.toml."
+
+function install() {
+    # --path . means install in $CARGO_HOME/bin, which will be $HOME/.cargo/bin
+    # --locked means use Cargo.lock
+    exec-cargo install --path . --locked
+}
+
+myproject.register_task install
+myproject.register_task_description install "Install the project binary in ${HOME}/.cargo/bin."
+
+mycmd.trace "Finished loading the rust task definition file."
