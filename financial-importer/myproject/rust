@@ -8,7 +8,7 @@ set -o nounset -o errexit -o errtrace -o pipefail
 # Rust Related Tasks
 myproject.register_task_definition_file_description "Tasks related to Rust language for the Financial Importer project"
 
-mycmd.defer_at_startup mycmd.init_bin cargo
+mycmd.add_to_init_bin_batch cargo
 function exec-cargo() {
     mycmd.bin_execute cargo "${@}"
 }
