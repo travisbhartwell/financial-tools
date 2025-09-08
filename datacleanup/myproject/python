@@ -9,7 +9,7 @@ myproject.register_task_definition_file_description "Tasks for dealing with Pyth
 
 # --------------------------------------------------------------------------------------------------
 # Python Tasks
-mycmd.defer_at_startup mycmd.init_bin uvx
+mycmd.add_to_init_bin_batch uvx
 function uvx_run() {
     mycmd.bin_execute uvx "${@}"
 }
